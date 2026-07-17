@@ -1,5 +1,11 @@
-// js/app.js
 import { api } from './api.js';
+
+// Access the global GoldenLayout provided by the script tag in index.html
+const GL = window.GoldenLayout; 
+
+// ... rest of your config ...
+const layout = new GL(config, $('#desktopLayoutContainer'));
+// ... rest of your initialization ...
 
 const localLat = 40.0759;
 const localLon = -75.2996;
