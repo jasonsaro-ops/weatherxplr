@@ -1,12 +1,13 @@
 import { api } from './api.js';
 
 $(document).ready(() => {
-    // Check if GoldenLayout loaded
+    // 1. Verify GoldenLayout is loaded
     if (typeof window.GoldenLayout === 'undefined') {
         console.error("GoldenLayout not found!");
         return;
     }
 
+    // 2. Define the configuration object
     const config = {
         content: [{
             type: 'row',
@@ -21,8 +22,10 @@ $(document).ready(() => {
         }]
     };
 
+    // 3. Declare 'layout' only once
     const layout = new window.GoldenLayout(config, $('#desktopLayoutContainer'));
 
+    // 4. Register components
     layout.registerComponent('localForecast', (container) => {
         container.getElement().html('<div class="weather-component">Loading Forecast...</div>');
         container.on('open', async () => {
@@ -40,5 +43,9 @@ $(document).ready(() => {
         });
     });
 
+    // 5. Initialize the unique 'layout' instance
     layout.init();
+
+    // 6. Handle resizing
+    $(window).resize(() => layout.updateSize());
 });
