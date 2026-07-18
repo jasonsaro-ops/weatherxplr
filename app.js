@@ -19,7 +19,7 @@ let globalForecastDataCache = null;
 let globalActiveAlertsCache = {};
 let noaaChartInstance = null;
 
-// Layout configuration - Height controls optimized to limit AQI panel dead space
+// Layout configuration - Height tracking optimized to compact AQI, restoring second map window
 const config = {
     settings: { hasHeaders: true, reorderEnabled: true, showPopoutIcon: false, showMaximiseIcon: true, showCloseIcon: false },
     content: [{
@@ -29,26 +29,25 @@ const config = {
                 type: 'column',
                 width: 35,
                 content: [
-                    { type: 'component', componentName: 'radarMap', title: 'WINDY DYNAMIC RADAR TRACKING' },
-                    { type: 'component', componentName: 'localForecast', title: '7-DAY GEOGRAPHIC SYNOPTIC OUTLOOK' }
+                    { type: 'component', componentName: 'radarMap', title: 'WINDY DYNAMIC RADAR TRACKING', height: 50 },
+                    { type: 'component', componentName: 'localForecast', title: '7-DAY GEOGRAPHIC SYNOPTIC OUTLOOK', height: 50 }
                 ]
             },
             {
                 type: 'column',
                 width: 35,
                 content: [
-                    { type: 'component', componentName: 'nwsAlerts', title: 'CRITICAL HAZARDS MATRIX (PHL / SEPA)' },
-                    { type: 'component', componentName: 'spcRisk', title: 'SPC CONVECTIVE MESOSCALE RISK (PHI MT HOLLY)' },
-                    { type: 'component', componentName: 'hydrologyFeed', title: 'SCHUYLKILL HYDROLOGY' }
+                    { type: 'component', componentName: 'hazardsAndRisk', title: 'CRITICAL HAZARDS & SPC CONVECTIVE RISK (PHL/SEPA/PHI)', height: 62 },
+                    { type: 'component', componentName: 'hydrologyFeed', title: 'SCHUYLKILL HYDROLOGY', height: 38 }
                 ]
             },
             {
                 type: 'column',
                 width: 30,
                 content: [
-                    { type: 'component', componentName: 'cloudMap', title: 'WINDY CLOUD ARRAYS' },
-                    { type: 'component', componentName: 'airQualityPanel', title: 'REGIONAL AQI MATRIX', height: 22 },
-                    { type: 'component', componentName: 'noaaTides', title: 'NOAA TIDES (8545240)', height: 78 }
+                    { type: 'component', componentName: 'cloudMap', title: 'WINDY CLOUD ARRAYS', height: 43 },
+                    { type: 'component', componentName: 'airQualityPanel', title: 'REGIONAL AQI MATRIX', height: 16 },
+                    { type: 'component', componentName: 'noaaTides', title: 'NOAA TIDES (8545240)', height: 41 }
                 ]
             }
         ]
@@ -135,24 +134,24 @@ layout.registerComponent('localForecast', function(container) {
     container.on('open', fetchNWSForecast);
 });
 
-layout.registerComponent('nwsAlerts', function(container) {
+// Unified Component combining NWS Alerts and Mount Holly SPC Convective Risk Matrix Focus
+layout.registerComponent('hazardsAndRisk', function(container) {
     container.getElement().html(`
-        <div class="weather-component" style="position:relative;">
-            <button id="sound-toggle-btn" class="sound-toggle" onclick="toggleSound()"><i class="fa-solid fa-bell-slash"></i> SOUND NOTIFICATIONS: OFF</button>
-            <div id="alerts-container">Interrogating matrix telemetry frames...</div>
+        <div class="weather-component" style="display: flex; flex-direction: column; justify-content: space-between; height: 100%;">
+            <div style="flex-grow: 1; overflow-y: auto; margin-bottom: 12px; padding-right: 2px;">
+                <button id="sound-toggle-btn" class="sound-toggle" onclick="toggleSound()"><i class="fa-solid fa-bell-slash"></i> SOUND NOTIFICATIONS: OFF</button>
+                <div id="alerts-container">Interrogating matrix telemetry frames...</div>
+            </div>
+            <div style="border-top: 1px dashed #30363d; padding-top: 8px; flex-shrink: 0;">
+                <div style="font-size: 0.75rem; color: #8b949e; margin-bottom: 6px; text-transform: uppercase; letter-spacing: 1px;"><i class="fa-solid fa-shield-halved"></i> SPC Convective Outlook (PHI Mount Holly Footprint)</div>
+                <div style="height: 145px; background: url('https://www.spc.noaa.gov/products/outlook/day1otlk_phi_sm.gif') center/contain no-repeat #000; cursor: pointer; border: 1px solid #30363d; border-radius: 4px;" onclick="openFloatingModal('SPC DAY 1 OUTLOOK - MT HOLLY REGION', '<img src=\\'https://www.spc.noaa.gov/products/outlook/day1otlk_phi.gif\\' style=\\'width:100%;\\'>')"></div>
+            </div>
         </div>`);
     container.on('open', fetchNWSAlerts);
 });
 
-layout.registerComponent('spcRisk', function(container) {
-    container.getElement().html(`
-        <div class="weather-component" style="padding:0; display:flex; flex-direction:column; overflow:hidden;">
-            <div style="flex-grow:1; background:url('https://www.spc.noaa.gov/products/outlook/day1otlk_phi_sm.gif') center/contain no-repeat #000; cursor:pointer;" onclick="openFloatingModal('SPC DAY 1 OUTLOOK - MT HOLLY REGION', '<img src=\\'https://www.spc.noaa.gov/products/outlook/day1otlk_phi.gif\\' style=\\'width:100%;\\'>')"></div>
-        </div>`);
-});
-
 layout.registerComponent('airQualityPanel', function(container) {
-    container.getElement().html(`<div class="weather-component" style="padding:10px;" id="aqi-container-target">Interrogating AirNow sensor frames...</div>`);
+    container.getElement().html(`<div class="weather-component" style="padding:10px; overflow: hidden;" id="aqi-container-target">Interrogating AirNow sensor frames...</div>`);
     container.on('open', fetchAirQualityData);
 });
 
@@ -232,7 +231,6 @@ function openForecastDetails(index) {
 }
 
 function fetchNWSAlerts() {
-    // Complete Southeastern PA & Philadelphia County Comprehensive Alert Zone Matrix
     // PAZ071: Phila, PAZ070: Delaware, PAZ106: Montgomery, PAZ105: Bucks, PAZ101: Chester
     fetch(`https://api.weather.gov/alerts/active?zone=PAZ071,PAZ070,PAZ106,PAZ105,PAZ101`)
         .then(res => res.json())
