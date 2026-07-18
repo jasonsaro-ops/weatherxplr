@@ -5,16 +5,35 @@ let countdownVal = 120;
 
 const AIRNOW_API_KEY = "E5AFEF36-80F6-4A42-AE38-F3C56E3AEAC4"; 
 
+// Mount Holly NWS Configuration for Philadelphia & Montgomery County
+const mountHollyNWSConfig = {
+    office: "MHX", // Mount Holly office code
+    zones: [
+        { code: "PAZ096", name: "Philadelphia County", center: { lat: 39.9526, lon: -75.1652 } },
+        { code: "PAZ097", name: "Montgomery County", center: { lat: 40.1907, lon: -75.2660 } }
+    ],
+    criticalEventTypes: [
+        "Tornado Warning",
+        "Severe Thunderstorm Warning",
+        "Flash Flood Warning",
+        "Winter Storm Warning",
+        "Flood Warning",
+        "High Wind Warning",
+        "Extreme Wind Warning"
+    ]
+};
+
 const schuylkillGauges = [
     { id: "01472000", name: "Schuylkill River at Reading, PA", lat: 40.3323, lon: -75.9324, noaaId: "RDGP1" },
     { id: "01473500", name: "Schuylkill River at Pottstown, PA", lat: 40.2429, lon: -75.6605, noaaId: "PTTP1" },
-    { id: "01474500", name: "Schuylkill River at Norristown, PA", lat: 40.1118, lon: -75.3532, noaaId: "NSRP1" },
+    { id: "01474500", name: "Schuylkill River at Norriton, PA", lat: 40.1118, lon: -75.3532, noaaId: "NSRP1" },
     { id: "01474703", name: "Schuylkill River at Conshohocken, PA", lat: 40.0712, lon: -75.3093, noaaId: "CSHP1" },
     { id: "01474000", name: "Schuylkill River at Philadelphia, PA (Fairmount Dam)", lat: 39.9676, lon: -75.1832, noaaId: "PADP1" }
 ];
 
 let globalForecastDataCache = null;
 let globalActiveAlertsCache = {};
+let globalMountHollyAlertsCache = {};
 let noaaChartInstance = null;
 
 // Layout configuration
@@ -36,6 +55,7 @@ const config = {
                 width: 30,
                 content: [
                     { type: 'component', componentName: 'nwsAlerts', title: 'CRITICAL ENVIRONMENTAL SPECTRUM HAZARDS MATRIX' },
+                    { type: 'component', componentName: 'mountHollyAlerts', title: 'MOUNT HOLLY NWS ALERTS (PHI/MONT)' },
                     { type: 'component', componentName: 'hydrologyFeed', title: 'SCHUYLKILL HYDROLOGIC REAL-TIME STREAMFLOW' }
                 ]
             },
@@ -59,7 +79,7 @@ layout.registerComponent('radarMap', function(container) {
     container.getElement().html(`
         <div style="position:relative; width:100%; height:100%; background:#0d1117;">
             <div style="position:absolute; top:15px; right:15px; z-index:999;">
-                <select id="windyLayerSelect" style="background: rgba(33, 38, 45, 0.9); color: #00ffcc; border: 1px solid #00ffcc; padding: 6px 10px; font-family: 'Share Tech Mono', monospace; font-size: 0.85rem; border-radius: 4px; cursor: pointer; box-shadow: 0 0 15px rgba(0,255,204,0.3); outline: none;">
+                <select id="windyLayerSelect" style="background: rgba(33, 38, 45, 0.9); color: #00ffcc; border: 1px solid #00ffcc; padding: 6px 10px; font-family: 'Share Tech Mono', monospace; font-size:0.8rem;">
                     <option value="radar">Weather Radar</option>
                     <option value="satellite">Satellite</option>
                     <option value="wind">Wind</option>
@@ -72,7 +92,7 @@ layout.registerComponent('radarMap', function(container) {
                     <option value="cape">CAPE Index</option>
                 </select>
             </div>
-            <iframe id="windyIframe" src="https://embed.windy.com/embed.html?type=map&location=coordinates&metricRain=in&metricTemp=f&metricWind=mph&zoom=8&overlay=radar&product=radar&level=surface&lat=${localLat}&lon=${localLon}&message=true" style="width:100%; height:100%; border:none;"></iframe>
+            <iframe id="windyIframe" src="https://embed.windy.com/embed.html?type=map&location=coordinates&metricRain=in&metricTemp=f&metricWind=mph&zoom=8&overlay=radar&product=radar&level=surface&lat=40.0759&lon=-75.2996" style="width:100%; height:100%; border:none;"></iframe>
         </div>
     `);
     
@@ -83,7 +103,7 @@ layout.registerComponent('radarMap', function(container) {
         select.on('change', function() {
             const layer = this.value;
             const product = (layer === 'radar' || layer === 'satellite') ? layer : 'gfs';
-            iframe.src = `https://embed.windy.com/embed.html?type=map&location=coordinates&metricRain=in&metricTemp=f&metricWind=mph&zoom=8&overlay=${layer}&product=${product}&level=surface&lat=${localLat}&lon=${localLon}&message=true`;
+            iframe.src = `https://embed.windy.com/embed.html?type=map&location=coordinates&metricRain=in&metricTemp=f&metricWind=mph&zoom=8&overlay=${layer}&product=${product}&level=surface&lat=40.0759&lon=-75.2996`;
         });
     }, 200);
 });
@@ -92,7 +112,7 @@ layout.registerComponent('cloudMap', function(container) {
     container.getElement().html(`
         <div style="position:relative; width:100%; height:100%; background:#0d1117;">
             <div style="position:absolute; top:15px; right:15px; z-index:999;">
-                <select id="windyCloudLayerSelect" style="background: rgba(33, 38, 45, 0.9); color: #00ffcc; border: 1px solid #00ffcc; padding: 6px 10px; font-family: 'Share Tech Mono', monospace; font-size: 0.85rem; border-radius: 4px; cursor: pointer; box-shadow: 0 0 15px rgba(0,255,204,0.3); outline: none;">
+                <select id="windyCloudLayerSelect" style="background: rgba(33, 38, 45, 0.9); color: #00ffcc; border: 1px solid #00ffcc; padding: 6px 10px; font-family: 'Share Tech Mono', monospace; font-size:0.8rem;">
                     <option value="radar">Weather Radar</option>
                     <option value="satellite">Satellite</option>
                     <option value="wind">Wind</option>
@@ -111,7 +131,7 @@ layout.registerComponent('cloudMap', function(container) {
                     <option value="cape">CAPE Index</option>
                 </select>
             </div>
-            <iframe id="windyCloudIframe" src="https://embed.windy.com/embed.html?type=map&location=coordinates&metricRain=in&metricTemp=f&metricWind=mph&zoom=8&overlay=clouds&product=gfs&level=surface&lat=${localLat}&lon=${localLon}&message=true" style="width:100%; height:100%; border:none;"></iframe>
+            <iframe id="windyCloudIframe" src="https://embed.windy.com/embed.html?type=map&location=coordinates&metricRain=in&metricTemp=f&metricWind=mph&zoom=8&overlay=clouds&product=gfs&level=surface&lat=40.0759&lon=-75.2996" style="width:100%; height:100%; border:none;"></iframe>
         </div>
     `);
     
@@ -122,7 +142,7 @@ layout.registerComponent('cloudMap', function(container) {
         select.on('change', function() {
             const layer = this.value;
             const product = (layer === 'radar' || layer === 'satellite') ? layer : 'gfs';
-            iframe.src = `https://embed.windy.com/embed.html?type=map&location=coordinates&metricRain=in&metricTemp=f&metricWind=mph&zoom=8&overlay=${layer}&product=${product}&level=surface&lat=${localLat}&lon=${localLon}&message=true`;
+            iframe.src = `https://embed.windy.com/embed.html?type=map&location=coordinates&metricRain=in&metricTemp=f&metricWind=mph&zoom=8&overlay=${layer}&product=${product}&level=surface&lat=40.0759&lon=-75.2996`;
         });
     }, 200);
 });
@@ -138,6 +158,18 @@ layout.registerComponent('nwsAlerts', function(container) {
             <div id="alerts-container">Interrogating matrix telemetry frames...</div>
         </div>`);
     container.on('open', fetchNWSAlerts);
+});
+
+layout.registerComponent('mountHollyAlerts', function(container) {
+    container.getElement().html(`
+        <div class="weather-component" style="position:relative; background:#1a1f26;">
+            <div style="margin-bottom:10px; padding-bottom:8px; border-bottom:1px solid #30363d;">
+                <div style="font-size:0.85rem; color:#ffcc00; font-weight:bold;"><i class="fa-solid fa-tower-broadcast"></i> MOUNT HOLLY NWS OFFICE</div>
+                <div style="font-size:0.7rem; color:#8b949e; margin-top:2px;">Philadelphia & Montgomery County Zones</div>
+            </div>
+            <div id="mount-holly-alerts-container">Scanning Mount Holly NWS databases...</div>
+        </div>`);
+    container.on('open', fetchMountHollyAlerts);
 });
 
 layout.registerComponent('airQualityPanel', function(container) {
@@ -175,7 +207,7 @@ function fetchNWSForecast() {
         .then(res => res.json())
         .then(data => {
             globalForecastDataCache = data.properties.periods;
-            let html = `<div id="current-obs" style="margin-bottom:15px; font-size:1.1rem; color:#fff; padding:10px; background:#161b22; border:1px solid #30363d; border-radius:4px;">CURRENT CONTEXT: ${globalForecastDataCache[0].temperature}°${globalForecastDataCache[0].temperatureUnit} — ${globalForecastDataCache[0].shortForecast}</div>`;
+            let html = `<div id="current-obs" style="margin-bottom:15px; font-size:1.1rem; color:#fff; padding:10px; background:#161b22; border:1px solid #30363d; border-radius:4px;">CURRENT CONDITIONS - 19428 CONSHOHOCKEN PA</div>`;
             html += `<div class="forecast-grid">`;
             
             globalForecastDataCache.forEach((p, i) => {
@@ -231,16 +263,89 @@ function fetchNWSAlerts() {
         }).catch(err => console.error("Hazards trace link breakdown:", err));
 }
 
+function fetchMountHollyAlerts() {
+    const container = $('#mount-holly-alerts-container');
+    let allAlerts = [];
+    
+    // Fetch alerts for each Mount Holly zone
+    Promise.all(mountHollyNWSConfig.zones.map(zone => 
+        fetch(`https://api.weather.gov/alerts/active?area=${zone.code}`)
+            .then(res => res.json())
+            .then(data => ({
+                zone: zone.name,
+                zoneCode: zone.code,
+                alerts: data.features || []
+            }))
+            .catch(err => {
+                console.error(`Error fetching alerts for ${zone.code}:`, err);
+                return { zone: zone.name, zoneCode: zone.code, alerts: [] };
+            })
+    )).then(results => {
+        globalMountHollyAlertsCache = {};
+        let html = '';
+        let hasAlerts = false;
+        
+        results.forEach(result => {
+            const zoneAlerts = result.alerts;
+            if (zoneAlerts.length > 0) {
+                hasAlerts = true;
+                html += `<div style="margin-bottom:12px;">`;
+                html += `<div style="font-size:0.75rem; color:#ffcc00; font-weight:bold; margin-bottom:5px; text-transform:uppercase;">${result.zone} (${result.zoneCode})</div>`;
+                
+                zoneAlerts.forEach(f => {
+                    const props = f.properties;
+                    const alertId = `mh-${result.zoneCode}-${props.id}`;
+                    globalMountHollyAlertsCache[alertId] = { ...props, zone: result.zone };
+                    
+                    // Highlight critical events
+                    const isCritical = mountHollyNWSConfig.criticalEventTypes.includes(props.event);
+                    const alertClass = isCritical ? 'critical-alert-item' : 'standard-alert-item';
+                    const alertStyle = isCritical ? 'border-left: 4px solid #ff0000; background: #3d1a1a;' : '';
+                    
+                    html += `
+                        <div class="${alertClass}" style="${alertStyle} border-left: 4px solid #ff6600; background: #2d2416; padding: 8px; margin-bottom: 6px; border-radius: 2px; cursor: pointer; font-size:0.75rem;" onclick="openMountHollyAlertDetails('${alertId}')">
+                            <div style="color: ${isCritical ? '#ff0000' : '#ffaa33'}; font-weight: bold; text-transform: uppercase;">${props.event}</div>
+                            <div style="color:#8b949e; margin-top:2px; font-size:0.7rem;">${props.headline ? props.headline.substring(0, 60) + (props.headline.length > 60 ? '...' : '') : 'Event update.'}</div>
+                        </div>`;
+                });
+                html += `</div>`;
+            }
+        });
+        
+        if (!hasAlerts) {
+            html = "<span style='color:#00ff55; font-size:0.8rem;'>✓ NO ACTIVE WARNINGS - Mount Holly NWS</span>";
+        }
+        
+        container.html(html);
+    }).catch(err => {
+        console.error("Mount Holly alerts fetch error:", err);
+        container.html(`<span style="color:#ff5555; font-size:0.8rem;"><i class="fa-solid fa-triangle-exclamation"></i> MOUNT HOLLY DATABASE UNREACHABLE</span>`);
+    });
+}
+
 function openAlertDetails(id) {
     const alertData = globalActiveAlertsCache[id];
     if (!alertData) return;
     let body = `<div style="color:#ff5555; font-weight:bold; margin-bottom:10px; border-bottom:1px solid #30363d; padding-bottom:8px;">${alertData.headline || alertData.event}</div>`;
-    body += `<div style="color:#fff; background:#0d1117; padding:12px; border-radius:4px; border:1px solid #21262d; margin-bottom:15px; font-family:monospace; font-size:0.85rem; white-space:pre-wrap;">${alertData.description}</div>`;
+    body += `<div style="color:#fff; background:#0d1117; padding:12px; border-radius:4px; border:1px solid #21262d; margin-bottom:15px; font-family:monospace; font-size:0.85rem; white-space:pre-wrap; word-wrap:break-word;">${alertData.description}</div>`;
     if (alertData.instruction) {
         body += `<div style="color:#ffcc00; font-weight:bold; margin-bottom:5px;"><i class="fa-solid fa-shield-halved"></i> MITIGATION ACTION GUIDELINES:</div>`;
-        body += `<div style="color:#00ffcc; background:#1f242c; padding:12px; border-radius:4px; border:1px solid #30363d; font-family:monospace; font-size:0.85rem;">${alertData.instruction}</div>`;
+        body += `<div style="color:#00ffcc; background:#1f242c; padding:12px; border-radius:4px; border:1px solid #30363d; font-family:monospace; font-size:0.85rem; white-space:pre-wrap; word-wrap:break-word;">${alertData.instruction}</div>`;
     }
     openFloatingModal(`ALERT MATRIX SPECIFICATIONS`, body);
+}
+
+function openMountHollyAlertDetails(id) {
+    const alertData = globalMountHollyAlertsCache[id];
+    if (!alertData) return;
+    let body = `<div style="color:#ffcc00; font-weight:bold; margin-bottom:5px; padding-bottom:5px; border-bottom:1px solid #30363d;"><i class="fa-solid fa-tower-broadcast"></i> MOUNT HOLLY NWS - ${alertData.zone}</div>`;
+    body += `<div style="color:#ff5555; font-weight:bold; margin-bottom:10px; border-bottom:1px solid #30363d; padding-bottom:8px;">${alertData.headline || alertData.event}</div>`;
+    body += `<div style="color:#fff; background:#0d1117; padding:12px; border-radius:4px; border:1px solid #21262d; margin-bottom:15px; font-family:monospace; font-size:0.85rem; white-space:pre-wrap; word-wrap:break-word;">${alertData.description}</div>`;
+    if (alertData.instruction) {
+        body += `<div style="color:#ffcc00; font-weight:bold; margin-bottom:5px;"><i class="fa-solid fa-shield-halved"></i> RECOMMENDED ACTIONS:</div>`;
+        body += `<div style="color:#00ffcc; background:#1f242c; padding:12px; border-radius:4px; border:1px solid #30363d; font-family:monospace; font-size:0.85rem; white-space:pre-wrap; word-wrap:break-word;">${alertData.instruction}</div>`;
+    }
+    openFloatingModal(`MOUNT HOLLY NWS ALERT DETAILS`, body);
 }
 
 function getAQIColorSpecs(aqiValue) {
@@ -310,9 +415,9 @@ function fetchNOAATides() {
         const latestAirTemp = airTemp.data ? airTemp.data[airTemp.data.length - 1] : null;
 
         let gaugeHtml = '';
-        if (latestWlMllw) gaugeHtml += `<div class="aqi-block-metric" style="padding:6px;"><div style="font-size:0.65rem; color:#8b949e; font-weight:bold;">WATER LVL (MLLW)</div><div class="aqi-score-callout" style="color:#00ffcc; font-size:1.3rem;">${latestWlMllw.v} ft</div></div>`;
-        if (latestWlNavd) gaugeHtml += `<div class="aqi-block-metric" style="padding:6px;"><div style="font-size:0.65rem; color:#8b949e; font-weight:bold;">WATER LVL (NAVD)</div><div class="aqi-score-callout" style="color:#00ccff; font-size:1.3rem;">${latestWlNavd.v} ft</div></div>`;
-        if (latestAirTemp) gaugeHtml += `<div class="aqi-block-metric" style="padding:6px;"><div style="font-size:0.65rem; color:#8b949e; font-weight:bold;">AIR TEMP</div><div class="aqi-score-callout" style="color:#ff9900; font-size:1.3rem;">${latestAirTemp.v}°F</div></div>`;
+        if (latestWlMllw) gaugeHtml += `<div class="aqi-block-metric" style="padding:6px;"><div style="font-size:0.65rem; color:#8b949e; font-weight:bold;">WATER LVL (MLLW)</div><div class="aqi-score-callout" style="font-size:1.8rem; color:#00ffcc;">${latestWlMllw.v} ft</div></div>`;
+        if (latestWlNavd) gaugeHtml += `<div class="aqi-block-metric" style="padding:6px;"><div style="font-size:0.65rem; color:#8b949e; font-weight:bold;">WATER LVL (NAVD)</div><div class="aqi-score-callout" style="font-size:1.8rem; color:#00ffcc;">${latestWlNavd.v} ft</div></div>`;
+        if (latestAirTemp) gaugeHtml += `<div class="aqi-block-metric" style="padding:6px;"><div style="font-size:0.65rem; color:#8b949e; font-weight:bold;">AIR TEMP</div><div class="aqi-score-callout" style="font-size:1.8rem; color:#ffaa00;">${latestAirTemp.v}°F</div></div>`;
 
         $('#noaa-gauges').html(gaugeHtml || '<span style="color:#ff5555;">NOAA FEED TIMEOUT</span>');
 
@@ -421,6 +526,7 @@ setInterval(() => {
         countdownVal = 120;
         fetchNWSForecast();
         fetchNWSAlerts();
+        fetchMountHollyAlerts();
         fetchAirQualityData();
         fetchNOAATides();
         fetchSchuylkillHydrology();
