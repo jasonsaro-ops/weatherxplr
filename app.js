@@ -15,7 +15,6 @@ const schuylkillGauges = [
 
 let globalForecastDataCache = null;
 let globalActiveAlertsCache = {};
-let globalMountHollyAlertsCache = {};
 let noaaChartInstance = null;
 let alertSoundEnabled = false;
 let previousAlertCount = 0;
@@ -400,32 +399,34 @@ function fetchAirQualityData() {
         .then(res => res.json())
         .then(data => {
             let html = `
-                <div class="aqi-station-row">
-                    <div class="aqi-station-header">
-                        <span><i class="fa-solid fa-satellite-dish"></i> CONSHOHOCKEN STATION LOOP (19428)</span>
-                        <span style="color: #00ffcc; font-size: 0.75rem;">[LIVE STREAM]</span>
+                <div style="margin-bottom:8px; padding-bottom:6px; border-bottom:1px dashed #30363d;">
+                    <div style="font-size:0.85rem; color:#fff;">
+                        <i class="fa-solid fa-satellite-dish"></i> CONSHOHOCKEN (19428)
+                        <span style="color: #00ffcc; font-size: 0.7rem; margin-left:4px;">[LIVE]</span>
                     </div>
-                    <div class="aqi-panel-wrap">`;
+                </div>`;
             
             if(!data || data.length === 0) {
-                html += `<span style="color:#ff8800; font-size:0.75rem; padding:5px;">NO DATA DEPLOYED FROM AQI SENSORS IN TARGET BUFFER</span>`;
+                html += `<div style="color:#ff8800; font-size:0.75rem; padding:8px 0;">NO SENSOR DATA</div>`;
             } else {
+                // Create a grid for tighter layout
+                html += `<div style="display:grid; grid-template-columns: 1fr 1fr; gap:6px;">`;
                 data.forEach(p => {
                     const profile = getAQIColorSpecs(p.AQI);
                     html += `
-                        <div class="aqi-block-metric">
-                            <div style="font-size:0.7rem; color:#8b949e; font-weight:bold; letter-spacing:1px;">${p.ParameterName} POLLUTANT</div>
-                            <div class="aqi-score-callout" style="color:${profile.color}">${p.AQI}</div>
-                            <span class="aqi-pill-badge" style="background-color:${profile.color}">${profile.label}</span>
+                        <div style="background: #0d1117; border: 1px solid #21262d; border-radius: 3px; padding:6px; text-align:center;">
+                            <div style="font-size:0.65rem; color:#8b949e; font-weight:bold; margin-bottom:3px; text-transform:uppercase; letter-spacing:0.5px;">${p.ParameterName}</div>
+                            <div style="font-size:1.6rem; color:${profile.color}; font-weight:bold;">${p.AQI}</div>
+                            <div style="font-size:0.6rem; color:${profile.color}; font-weight:bold; margin-top:2px;">${profile.label}</div>
                         </div>`;
                 });
+                html += `</div>`;
             }
-            html += `</div></div>`;
             $('#aqi-container-target').html(html);
         })
         .catch(err => {
             console.error("AirNow loop crash:", err);
-            $('#aqi-container-target').html(`<span style="color:#ff5555; font-size:0.8rem;"><i class="fa-solid fa-triangle-exclamation"></i> FEED TIMEOUT - SECURE KEY REJECTED</span>`);
+            $('#aqi-container-target').html(`<span style="color:#ff5555; font-size:0.8rem;"><i class="fa-solid fa-triangle-exclamation"></i> FEED TIMEOUT</span>`);
         });
 }
 
@@ -449,12 +450,13 @@ function fetchNOAATides() {
         const latestWlNavd = wlNavd.data ? wlNavd.data[wlNavd.data.length - 1] : null;
         const latestAirTemp = airTemp.data ? airTemp.data[airTemp.data.length - 1] : null;
 
-        let gaugeHtml = '';
-        if (latestWlMllw) gaugeHtml += `<div class="aqi-block-metric" style="padding:6px;"><div style="font-size:0.65rem; color:#8b949e; font-weight:bold;">WATER LVL (MLLW)</div><div class="aqi-score-callout" style="font-size:1.8rem; color:#00ffcc;">${latestWlMllw.v} ft</div></div>`;
-        if (latestWlNavd) gaugeHtml += `<div class="aqi-block-metric" style="padding:6px;"><div style="font-size:0.65rem; color:#8b949e; font-weight:bold;">WATER LVL (NAVD)</div><div class="aqi-score-callout" style="font-size:1.8rem; color:#00ffcc;">${latestWlNavd.v} ft</div></div>`;
-        if (latestAirTemp) gaugeHtml += `<div class="aqi-block-metric" style="padding:6px;"><div style="font-size:0.65rem; color:#8b949e; font-weight:bold;">AIR TEMP</div><div class="aqi-score-callout" style="font-size:1.8rem; color:#ffaa00;">${latestAirTemp.v}°F</div></div>`;
+        let gaugeHtml = `<div style="display:grid; grid-template-columns: 1fr 1fr 1fr; gap:6px;">`;
+        if (latestWlMllw) gaugeHtml += `<div style="background:#161b22; border:1px solid #30363d; border-radius:3px; padding:6px; text-align:center;"><div style="font-size:0.65rem; color:#8b949e; font-weight:bold; margin-bottom:2px;">WATER LVL</div><div style="font-size:1.5rem; color:#00ffcc; font-weight:bold;">${latestWlMllw.v}</div><div style="font-size:0.6rem; color:#8b949e;">ft MLLW</div></div>`;
+        if (latestWlNavd) gaugeHtml += `<div style="background:#161b22; border:1px solid #30363d; border-radius:3px; padding:6px; text-align:center;"><div style="font-size:0.65rem; color:#8b949e; font-weight:bold; margin-bottom:2px;">WATER LVL</div><div style="font-size:1.5rem; color:#00ffcc; font-weight:bold;">${latestWlNavd.v}</div><div style="font-size:0.6rem; color:#8b949e;">ft NAVD</div></div>`;
+        if (latestAirTemp) gaugeHtml += `<div style="background:#161b22; border:1px solid #30363d; border-radius:3px; padding:6px; text-align:center;"><div style="font-size:0.65rem; color:#8b949e; font-weight:bold; margin-bottom:2px;">AIR TEMP</div><div style="font-size:1.5rem; color:#ffaa00; font-weight:bold;">${latestAirTemp.v}°</div><div style="font-size:0.6rem; color:#8b949e;">F</div></div>`;
+        gaugeHtml += `</div>`;
 
-        $('#noaa-gauges').html(gaugeHtml || '<span style="color:#ff5555;">NOAA FEED TIMEOUT</span>');
+        $('#noaa-gauges').html(gaugeHtml || '<span style="color:#ff5555;">NOAA TIMEOUT</span>');
 
         const labels = wlMllw.data ? wlMllw.data.map(d => {
             const timeParts = d.t.split(' ')[1].split(':');
@@ -515,18 +517,18 @@ function fetchNOAATides() {
 
     }).catch(err => {
         console.error("NOAA API Error:", err);
-        $('#noaa-gauges').html('<span style="color:#ff5555; font-size:0.8rem;"><i class="fa-solid fa-triangle-exclamation"></i> NOAA FEED TIMEOUT</span>');
+        $('#noaa-gauges').html('<span style="color:#ff5555; font-size:0.8rem;"><i class="fa-solid fa-triangle-exclamation"></i> NOAA TIMEOUT</span>');
     });
 }
 
 function fetchSchuylkillHydrology() {
-    let html = '<h3 style="margin-top:0; color:#00ffcc; letter-spacing:1px; font-size:0.9rem;">HYDRO-CORRIDOR BASIN STREAMFLOW MANAGEMENT</h3>';
+    let html = '<h3 style="margin-top:0; margin-bottom:10px; color:#00ffcc; letter-spacing:1px; font-size:0.9rem;">HYDRO-CORRIDOR BASIN STREAMFLOW</h3>';
     schuylkillGauges.forEach(g => {
         html += `
-            <div class="gauge-card">
-                <div style="font-weight:bold; color:#fff; font-size:0.9rem;">${g.name}</div>
-                <div style="color:#00ffcc; margin:5px 0 8px 0; font-size:0.8rem;"><i class="fa-solid fa-water"></i> MONITOR REF: USGS-${g.id}</div>
-                <button class="gauge-btn" onclick="openHydrographModal('${g.id}', '${g.name.replace(/'/g, "\\'")}')"><i class="fa-solid fa-chart-line"></i> Deploy Waveform Graphs</button>
+            <div style="background:#161b22; border:1px solid #30363d; border-radius:3px; padding:8px; margin-bottom:8px;">
+                <div style="font-weight:bold; color:#fff; font-size:0.85rem;">${g.name}</div>
+                <div style="color:#00ffcc; margin:4px 0; font-size:0.75rem;"><i class="fa-solid fa-water"></i> USGS-${g.id}</div>
+                <button class="gauge-btn" onclick="openHydrographModal('${g.id}', '${g.name.replace(/'/g, "\\'")}')"><i class="fa-solid fa-chart-line"></i> Waveform</button>
             </div>`;
     });
     $('#hydro-river-list').html(html);
