@@ -128,9 +128,9 @@ layout.registerComponent('hazardsAndRisk', function(container) {
             <div style="border-top: 1px dashed #30363d; padding-top: 8px; flex-shrink: 0; background: #0d1117;">
                 <div style="font-size: 0.75rem; color: #8b949e; margin-bottom: 6px; text-transform: uppercase; letter-spacing: 1px;"><i class="fa-solid fa-shield-halved"></i> SPC Convective Outlook (CONUS)</div>
                 <div style="height: 145px; cursor: pointer; border: 1px solid #30363d; border-radius: 4px; overflow: hidden; display: flex; align-items: center; justify-content: center; background: #000;" 
-                     onclick="openFloatingModal('SPC DAY 1 OUTLOOK - NATIONAL CONTEXT', '<img src=\\'https://www.spc.noaa.gov/products/outlook/day1otlk.gif?t=${Date.now()}\\' style=\\'width:100%;\\'>')">
-                     <img src="https://www.spc.noaa.gov/products/outlook/day1otlk.gif?t=${Date.now()}" style="height: 100%; width: 100%; object-fit: contain;">
-                </div>
+     onclick="openFloatingModal('SPC DAY 1 OUTLOOK - NATIONAL CONTEXT', '<img src=\\'https://www.spc.noaa.gov/products/outlook/day1otlk.gif?t=${Date.now()}\\' style=\\'width:100%;\\'>')">
+     <img id="spc-convective-outlook" src="https://www.spc.noaa.gov/products/outlook/day1otlk.gif?t=${Date.now()}">
+</div>
             </div>
         </div>`);
     container.on('open', fetchNWSAlerts);
