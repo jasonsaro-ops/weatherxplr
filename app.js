@@ -5,30 +5,6 @@ let countdownVal = 120;
 
 const AIRNOW_API_KEY = "E5AFEF36-80F6-4A42-AE38-F3C56E3AEAC4"; 
 
-// Mount Holly NWS Configuration for Philadelphia & Montgomery County
-const mountHollyNWSConfig = {
-    office: "MHX", // Mount Holly office code
-    zones: [
-        { code: "PAZ096", name: "Philadelphia County", center: { lat: 39.9526, lon: -75.1652 } },
-        { code: "PAZ097", name: "Montgomery County", center: { lat: 40.1907, lon: -75.2660 } }
-    ],
-    criticalEventTypes: [
-        "Tornado Warning",
-        "Severe Thunderstorm Warning",
-        "Flash Flood Warning",
-        "Winter Storm Warning",
-        "Flood Warning",
-        "High Wind Warning",
-        "Extreme Wind Warning"
-    ]
-};
-
-// Pennsylvania state bounds for alerts
-const pennsylvaniaAreas = [
-    // Northwestern PA
-    "PAC001", "PAC003", "PAC005", "PAC007", "PAC009", "PAC011", "PAC013", "PAC015", "PAC017", "PAC019", "PAC021", "PAC023", "PAC025", "PAC027", "PAC029", "PAC031", "PAC033", "PAC035", "PAC037", "PAC039", "PAC041", "PAC043", "PAC045", "PAC047", "PAC049", "PAC051", "PAC053", "PAC055", "PAC057", "PAC059", "PAC061", "PAC063", "PAC065", "PAC067"
-];
-
 const schuylkillGauges = [
     { id: "01472000", name: "Schuylkill River at Reading, PA", lat: 40.3323, lon: -75.9324, noaaId: "RDGP1" },
     { id: "01473500", name: "Schuylkill River at Pottstown, PA", lat: 40.2429, lon: -75.6605, noaaId: "PTTP1" },
@@ -40,8 +16,6 @@ const schuylkillGauges = [
 let globalForecastDataCache = null;
 let globalActiveAlertsCache = {};
 let globalMountHollyAlertsCache = {};
-let globalPennsylvaniaAlertsCache = {};
-let globalSPCAlertsCache = {};
 let noaaChartInstance = null;
 let alertSoundEnabled = false;
 let previousAlertCount = 0;
@@ -49,9 +23,12 @@ let alertAudio = null;
 
 // Initialize alert sound
 function initAlertSound() {
-    // Create an audio context for alert sound - using Web Audio API
-    const audioContext = new (window.AudioContext || window.webkitAudioContext)();
-    alertAudio = audioContext;
+    try {
+        const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        alertAudio = audioContext;
+    } catch (err) {
+        console.log("Audio context initialization deferred - will try on first user interaction");
+    }
 }
 
 // Play alert sound
@@ -60,13 +37,16 @@ function playAlertSound() {
     
     try {
         const context = alertAudio;
+        if (context.state === 'suspended') {
+            context.resume();
+        }
+        
         const oscillator = context.createOscillator();
         const gainNode = context.createGain();
         
         oscillator.connect(gainNode);
         gainNode.connect(context.destination);
         
-        // Alert tone: 1000Hz for 100ms, then 1200Hz for 100ms, repeated
         oscillator.frequency.value = 1000;
         gainNode.gain.setValueAtTime(0.3, context.currentTime);
         gainNode.gain.exponentialRampToValueAtTime(0.01, context.currentTime + 0.1);
@@ -74,7 +54,6 @@ function playAlertSound() {
         oscillator.start(context.currentTime);
         oscillator.stop(context.currentTime + 0.1);
         
-        // Second beep
         const osc2 = context.createOscillator();
         osc2.connect(gainNode);
         osc2.frequency.value = 1200;
@@ -105,8 +84,7 @@ const config = {
                 type: 'column',
                 width: 30,
                 content: [
-                    { type: 'component', componentName: 'nwsAlerts', title: 'CRITICAL ENVIRONMENTAL SPECTRUM HAZARDS MATRIX' },
-                    { type: 'component', componentName: 'mountHollyAlerts', title: 'MOUNT HOLLY NWS ALERTS (PHI/MONT)' },
+                    { type: 'component', componentName: 'nwsAlerts', title: 'CRITICAL ENVIRONMENTAL SPECTRUM HAZARDS MATRIX - PENNSYLVANIA' },
                     { type: 'component', componentName: 'hydrologyFeed', title: 'SCHUYLKILL HYDROLOGIC REAL-TIME STREAMFLOW' }
                 ]
             },
@@ -207,26 +185,14 @@ layout.registerComponent('nwsAlerts', function(container) {
     container.getElement().html(`
         <div class="weather-component" style="position:relative;">
             <div style="margin-bottom:10px; padding-bottom:8px; border-bottom:1px solid #30363d; display:flex; justify-content:space-between; align-items:center;">
-                <div style="font-size:0.85rem; color:#ffcc00; font-weight:bold;"><i class="fa-solid fa-triangle-exclamation"></i> PENNSYLVANIA STATEWIDE ALERTS</div>
+                <div style="font-size:0.85rem; color:#ffcc00; font-weight:bold;"><i class="fa-solid fa-triangle-exclamation"></i> NWS ALERTS</div>
                 <button id="soundToggleBtn" onclick="toggleAlertSound()" style="background: #21262d; border: 1px solid #30363d; color: #8b949e; padding: 3px 8px; border-radius: 3px; cursor: pointer; font-family: 'Share Tech Mono', monospace; font-size: 0.7rem; transition: all 0.2s;" title="Toggle alert sound">
                     <i class="fa-solid fa-volume-mute"></i> SOUND OFF
                 </button>
             </div>
-            <div id="alerts-container">Interrogating matrix telemetry frames...</div>
+            <div id="alerts-container">Scanning NWS alert network...</div>
         </div>`);
     container.on('open', fetchPennsylvaniaAlerts);
-});
-
-layout.registerComponent('mountHollyAlerts', function(container) {
-    container.getElement().html(`
-        <div class="weather-component" style="position:relative; background:#1a1f26;">
-            <div style="margin-bottom:10px; padding-bottom:8px; border-bottom:1px solid #30363d;">
-                <div style="font-size:0.85rem; color:#ffcc00; font-weight:bold;"><i class="fa-solid fa-tower-broadcast"></i> MOUNT HOLLY NWS OFFICE</div>
-                <div style="font-size:0.7rem; color:#8b949e; margin-top:2px;">Philadelphia & Montgomery County Zones</div>
-            </div>
-            <div id="mount-holly-alerts-container">Scanning Mount Holly NWS databases...</div>
-        </div>`);
-    container.on('open', fetchMountHollyAlerts);
 });
 
 layout.registerComponent('airQualityPanel', function(container) {
@@ -255,7 +221,7 @@ layout.registerComponent('hydrologyFeed', function(container) {
 
 layout.init();
 
-// Initialize alert sound on first user interaction
+// Initialize audio on first user interaction
 document.addEventListener('click', () => {
     if (!alertAudio) {
         initAlertSound();
@@ -265,6 +231,10 @@ document.addEventListener('click', () => {
 // --- Logic Implementation ---
 
 function toggleAlertSound() {
+    if (!alertAudio) {
+        initAlertSound();
+    }
+    
     alertSoundEnabled = !alertSoundEnabled;
     const btn = document.getElementById('soundToggleBtn');
     if (btn) {
@@ -273,7 +243,7 @@ function toggleAlertSound() {
             btn.style.borderColor = '#00ff55';
             btn.style.color = '#00ff55';
             btn.innerHTML = '<i class="fa-solid fa-volume-high"></i> SOUND ON';
-            playAlertSound(); // Test sound
+            playAlertSound();
         } else {
             btn.style.background = '#21262d';
             btn.style.borderColor = '#30363d';
@@ -304,7 +274,7 @@ function fetchNWSForecast() {
             });
             html += `</div>`;
             $('#forecast-container').html(html);
-        }).catch(err => console.error("Forecast trace mismatch:", err));
+        }).catch(err => console.error("Forecast error:", err));
 }
 
 function openForecastDetails(index) {
@@ -324,84 +294,71 @@ function openForecastDetails(index) {
 
 function fetchPennsylvaniaAlerts() {
     const container = $('#alerts-container');
+    console.log("Starting Pennsylvania alerts fetch...");
     
-    // Fetch all active alerts in Pennsylvania using NWS API
-    fetch('https://api.weather.gov/alerts/active?point=40.5,-77.5')
-        .then(res => res.json())
+    // Use the NWS alerts API with a broad Pennsylvania search
+    // Query all alerts and filter for PA
+    fetch('https://api.weather.gov/alerts/active')
+        .then(res => {
+            console.log("Alert API response status:", res.status);
+            return res.json();
+        })
         .then(data => {
-            let nwsAlerts = data.features || [];
+            console.log("Total features returned:", data.features ? data.features.length : 0);
             
-            // Filter for Pennsylvania only (by checking areaDesc)
-            nwsAlerts = nwsAlerts.filter(f => {
+            let allAlerts = data.features || [];
+            
+            // Filter for Pennsylvania alerts only
+            let paAlerts = allAlerts.filter(f => {
                 const areaDesc = f.properties.areaDesc || '';
-                return areaDesc.includes('PA') || areaDesc.includes('Pennsylvania');
+                const properties = f.properties;
+                
+                // Check if alert applies to PA
+                return areaDesc.includes('PA') || 
+                       areaDesc.includes('Pennsylvania') ||
+                       (properties.areaDesc && properties.areaDesc.toLowerCase().includes('pennsylvania'));
             });
             
-            console.log(`Found ${nwsAlerts.length} NWS alerts in Pennsylvania`);
+            console.log("Pennsylvania alerts found:", paAlerts.length);
+            paAlerts.forEach(alert => {
+                console.log("Alert:", alert.properties.event, "-", alert.properties.areaDesc);
+            });
             
-            // Fetch SPC alerts
-            return fetchSPCAlerts().then(spcAlerts => ({
-                nws: nwsAlerts,
-                spc: spcAlerts
-            }));
-        })
-        .then(({ nws, spc }) => {
-            globalPennsylvaniaAlertsCache = {};
+            globalActiveAlertsCache = {};
             let html = '';
-            let currentAlertCount = 0;
+            let alertCount = 0;
             
-            // Display NWS Alerts
-            if (nws.length > 0) {
+            if (paAlerts.length > 0) {
                 html += `<div style="margin-bottom:10px; padding-bottom:8px; border-bottom:1px solid #30363d;">
-                    <div style="font-size:0.75rem; color:#ffcc00; font-weight:bold; margin-bottom:5px;">NWS ALERTS (STATEWIDE) - ${nws.length} ACTIVE</div>`;
+                    <div style="font-size:0.75rem; color:#ffcc00; font-weight:bold; margin-bottom:5px;">ACTIVE ALERTS - ${paAlerts.length}</div>`;
                 
-                nws.forEach(f => {
+                paAlerts.forEach(f => {
                     const props = f.properties;
-                    const alertId = `nws-pa-${props.id}`;
-                    globalPennsylvaniaAlertsCache[alertId] = { ...props, source: 'NWS' };
-                    currentAlertCount++;
+                    const alertId = props.id;
+                    globalActiveAlertsCache[alertId] = props;
+                    alertCount++;
                     
-                    // Highlight critical events
-                    const isCritical = mountHollyNWSConfig.criticalEventTypes.includes(props.event);
+                    // Critical event types highlighting
+                    const criticalEvents = ['Tornado Warning', 'Severe Thunderstorm Warning', 'Flash Flood Warning', 'Winter Storm Warning', 'Flood Warning'];
+                    const isCritical = criticalEvents.includes(props.event);
                     const alertStyle = isCritical ? 'border-left: 4px solid #ff0000; background: #3d1a1a;' : 'border-left: 4px solid #ff6600; background: #2d2416;';
                     
                     html += `
-                        <div class="alert-item" style="${alertStyle} padding: 8px; margin-bottom: 6px; border-radius: 2px; cursor: pointer; font-size:0.75rem;" onclick="openPennsylvaniaAlertDetails('${alertId}')">
+                        <div class="alert-item" style="${alertStyle} padding: 8px; margin-bottom: 6px; border-radius: 2px; cursor: pointer; font-size:0.75rem;" onclick="openAlertDetails('${alertId}')">
                             <div style="color: ${isCritical ? '#ff0000' : '#ffaa33'}; font-weight: bold; text-transform: uppercase;">${props.event}</div>
                             <div style="color:#8b949e; margin-top:2px; font-size:0.7rem;">${props.areaDesc} | ${props.headline ? props.headline.substring(0, 40) + (props.headline.length > 40 ? '...' : '') : 'Event update.'}</div>
                         </div>`;
                 });
                 html += `</div>`;
-            }
-            
-            // Display SPC Alerts
-            if (spc.length > 0) {
-                html += `<div style="margin-bottom:10px; padding-bottom:8px; border-bottom:1px solid #30363d;">
-                    <div style="font-size:0.75rem; color:#ff9900; font-weight:bold; margin-bottom:5px;">SPC PRODUCTS (STORM PREDICTION CENTER) - ${spc.length}</div>`;
-                
-                spc.forEach(alert => {
-                    const alertId = `spc-pa-${alert.id}`;
-                    globalSPCAlertsCache[alertId] = alert;
-                    currentAlertCount++;
-                    
-                    html += `
-                        <div class="alert-item" style="border-left: 4px solid #ff9900; background: #2d2416; padding: 8px; margin-bottom: 6px; border-radius: 2px; cursor: pointer; font-size:0.75rem;" onclick="openSPCAlertDetails('${alertId}')">
-                            <div style="color: #ff9900; font-weight: bold; text-transform: uppercase;">${alert.type}</div>
-                            <div style="color:#8b949e; margin-top:2px; font-size:0.7rem;">${alert.headline || alert.description.substring(0, 50) + '...'}</div>
-                        </div>`;
-                });
-                html += `</div>`;
-            }
-            
-            if (nws.length === 0 && spc.length === 0) {
+            } else {
                 html = "<span style='color:#00ff55; font-size:0.8rem;'>✓ SYSTEM CLEAN: NO ACTIVE ALERTS FOR PENNSYLVANIA</span>";
             }
             
-            // Play sound if new alerts appeared
-            if (currentAlertCount > previousAlertCount) {
+            // Check if new alerts appeared and play sound
+            if (alertCount > previousAlertCount && alertCount > 0) {
                 playAlertSound();
             }
-            previousAlertCount = currentAlertCount;
+            previousAlertCount = alertCount;
             
             container.html(html);
         })
@@ -411,162 +368,20 @@ function fetchPennsylvaniaAlerts() {
         });
 }
 
-function fetchSPCAlerts() {
-    // Fetch SPC outlooks and products
-    return Promise.all([
-        fetch('https://www.spc.noaa.gov/products/fire_wx/fwdy1.json').then(r => r.json()).catch(() => ({})),
-        fetch('https://www.spc.noaa.gov/products/outlook/day1otlk.json').then(r => r.json()).catch(() => ({}))
-    ]).then(([fireWx, day1Outlook]) => {
-        let alerts = [];
-        
-        // Parse fire weather outlook
-        if (fireWx && fireWx.features) {
-            fireWx.features.forEach((feature, idx) => {
-                if (feature.properties && feature.properties.LABEL && feature.properties.LABEL.includes('PA')) {
-                    alerts.push({
-                        id: `fw-${idx}`,
-                        type: 'Fire Weather Outlook',
-                        headline: feature.properties.LABEL || 'Fire Weather Alert',
-                        description: feature.properties.LABEL || 'Fire weather conditions detected in Pennsylvania'
-                    });
-                }
-            });
-        }
-        
-        // Parse day 1 outlook
-        if (day1Outlook && day1Outlook.features) {
-            day1Outlook.features.forEach((feature, idx) => {
-                if (feature.geometry) {
-                    const props = feature.properties || {};
-                    const riskLevel = props.RISK || 'GENERAL';
-                    if (riskLevel !== 'GENERAL') {
-                        alerts.push({
-                            id: `d1-${idx}`,
-                            type: `${riskLevel} Risk (Day 1 Outlook)`,
-                            headline: `Severe Weather Risk: ${riskLevel}`,
-                            description: `Day 1 Outlook - Risk Level: ${riskLevel}`
-                        });
-                    }
-                }
-            });
-        }
-        
-        return alerts;
-    }).catch(err => {
-        console.error("SPC fetch error:", err);
-        return [];
-    });
-}
-
-function openPennsylvaniaAlertDetails(id) {
-    const alertData = globalPennsylvaniaAlertsCache[id];
-    if (!alertData) return;
-    let body = `<div style="color:#ffcc00; font-weight:bold; margin-bottom:5px; padding-bottom:5px; border-bottom:1px solid #30363d;"><i class="fa-solid fa-landmark"></i> PENNSYLVANIA STATEWIDE ALERT</div>`;
-    body += `<div style="color:#ff5555; font-weight:bold; margin-bottom:10px; border-bottom:1px solid #30363d; padding-bottom:8px;">${alertData.headline || alertData.event}</div>`;
-    body += `<div style="color:#fff; background:#0d1117; padding:12px; border-radius:4px; border:1px solid #21262d; margin-bottom:15px; font-family:monospace; font-size:0.85rem; white-space:pre-wrap; word-wrap:break-word;">${alertData.description}</div>`;
-    if (alertData.instruction) {
-        body += `<div style="color:#ffcc00; font-weight:bold; margin-bottom:5px;"><i class="fa-solid fa-shield-halved"></i> RECOMMENDED ACTIONS:</div>`;
-        body += `<div style="color:#00ffcc; background:#1f242c; padding:12px; border-radius:4px; border:1px solid #30363d; font-family:monospace; font-size:0.85rem; white-space:pre-wrap; word-wrap:break-word;">${alertData.instruction}</div>`;
-    }
-    openFloatingModal(`NWS PENNSYLVANIA ALERT DETAILS`, body);
-}
-
-function openSPCAlertDetails(id) {
-    const alertData = globalSPCAlertsCache[id];
-    if (!alertData) return;
-    let body = `<div style="color:#ff9900; font-weight:bold; margin-bottom:5px; padding-bottom:5px; border-bottom:1px solid #30363d;"><i class="fa-solid fa-tower-broadcast"></i> STORM PREDICTION CENTER</div>`;
-    body += `<div style="color:#ff9900; font-weight:bold; margin-bottom:10px; border-bottom:1px solid #30363d; padding-bottom:8px;">${alertData.type}</div>`;
-    body += `<div style="color:#fff; background:#0d1117; padding:12px; border-radius:4px; border:1px solid #21262d; margin-bottom:15px; font-family:monospace; font-size:0.85rem; white-space:pre-wrap; word-wrap:break-word;">${alertData.description}</div>`;
-    if (alertData.headline) {
-        body += `<div style="color:#ffcc00; font-weight:bold; margin-bottom:5px;"><i class="fa-solid fa-star"></i> SUMMARY:</div>`;
-        body += `<div style="color:#00ffcc; background:#1f242c; padding:12px; border-radius:4px; border:1px solid #30363d; font-family:monospace; font-size:0.85rem; white-space:pre-wrap; word-wrap:break-word;">${alertData.headline}</div>`;
-    }
-    openFloatingModal(`SPC ALERT DETAILS`, body);
-}
-
-function fetchMountHollyAlerts() {
-    const container = $('#mount-holly-alerts-container');
-    let allAlerts = [];
-    
-    // Fetch alerts for each Mount Holly zone
-    Promise.all(mountHollyNWSConfig.zones.map(zone => 
-        fetch(`https://api.weather.gov/alerts/active?area=${zone.code}`)
-            .then(res => res.json())
-            .then(data => ({
-                zone: zone.name,
-                zoneCode: zone.code,
-                alerts: data.features || []
-            }))
-            .catch(err => {
-                console.error(`Error fetching alerts for ${zone.code}:`, err);
-                return { zone: zone.name, zoneCode: zone.code, alerts: [] };
-            })
-    )).then(results => {
-        globalMountHollyAlertsCache = {};
-        let html = '';
-        let hasAlerts = false;
-        
-        results.forEach(result => {
-            const zoneAlerts = result.alerts;
-            if (zoneAlerts.length > 0) {
-                hasAlerts = true;
-                html += `<div style="margin-bottom:12px;">`;
-                html += `<div style="font-size:0.75rem; color:#ffcc00; font-weight:bold; margin-bottom:5px; text-transform:uppercase;">${result.zone} (${result.zoneCode})</div>`;
-                
-                zoneAlerts.forEach(f => {
-                    const props = f.properties;
-                    const alertId = `mh-${result.zoneCode}-${props.id}`;
-                    globalMountHollyAlertsCache[alertId] = { ...props, zone: result.zone };
-                    
-                    // Highlight critical events
-                    const isCritical = mountHollyNWSConfig.criticalEventTypes.includes(props.event);
-                    const alertClass = isCritical ? 'critical-alert-item' : 'standard-alert-item';
-                    const alertStyle = isCritical ? 'border-left: 4px solid #ff0000; background: #3d1a1a;' : '';
-                    
-                    html += `
-                        <div class="${alertClass}" style="${alertStyle} border-left: 4px solid #ff6600; background: #2d2416; padding: 8px; margin-bottom: 6px; border-radius: 2px; cursor: pointer; font-size:0.75rem;" onclick="openMountHollyAlertDetails('${alertId}')">
-                            <div style="color: ${isCritical ? '#ff0000' : '#ffaa33'}; font-weight: bold; text-transform: uppercase;">${props.event}</div>
-                            <div style="color:#8b949e; margin-top:2px; font-size:0.7rem;">${props.headline ? props.headline.substring(0, 60) + (props.headline.length > 60 ? '...' : '') : 'Event update.'}</div>
-                        </div>`;
-                });
-                html += `</div>`;
-            }
-        });
-        
-        if (!hasAlerts) {
-            html = "<span style='color:#00ff55; font-size:0.8rem;'>✓ NO ACTIVE WARNINGS - Mount Holly NWS</span>";
-        }
-        
-        container.html(html);
-    }).catch(err => {
-        console.error("Mount Holly alerts fetch error:", err);
-        container.html(`<span style="color:#ff5555; font-size:0.8rem;"><i class="fa-solid fa-triangle-exclamation"></i> MOUNT HOLLY DATABASE UNREACHABLE</span>`);
-    });
-}
-
 function openAlertDetails(id) {
     const alertData = globalActiveAlertsCache[id];
     if (!alertData) return;
+    
     let body = `<div style="color:#ff5555; font-weight:bold; margin-bottom:10px; border-bottom:1px solid #30363d; padding-bottom:8px;">${alertData.headline || alertData.event}</div>`;
+    body += `<div style="color:#8b949e; margin-bottom:8px;"><strong>Area:</strong> ${alertData.areaDesc}</div>`;
     body += `<div style="color:#fff; background:#0d1117; padding:12px; border-radius:4px; border:1px solid #21262d; margin-bottom:15px; font-family:monospace; font-size:0.85rem; white-space:pre-wrap; word-wrap:break-word;">${alertData.description}</div>`;
-    if (alertData.instruction) {
-        body += `<div style="color:#ffcc00; font-weight:bold; margin-bottom:5px;"><i class="fa-solid fa-shield-halved"></i> MITIGATION ACTION GUIDELINES:</div>`;
-        body += `<div style="color:#00ffcc; background:#1f242c; padding:12px; border-radius:4px; border:1px solid #30363d; font-family:monospace; font-size:0.85rem; white-space:pre-wrap; word-wrap:break-word;">${alertData.instruction}</div>`;
-    }
-    openFloatingModal(`ALERT MATRIX SPECIFICATIONS`, body);
-}
-
-function openMountHollyAlertDetails(id) {
-    const alertData = globalMountHollyAlertsCache[id];
-    if (!alertData) return;
-    let body = `<div style="color:#ffcc00; font-weight:bold; margin-bottom:5px; padding-bottom:5px; border-bottom:1px solid #30363d;"><i class="fa-solid fa-tower-broadcast"></i> MOUNT HOLLY NWS - ${alertData.zone}</div>`;
-    body += `<div style="color:#ff5555; font-weight:bold; margin-bottom:10px; border-bottom:1px solid #30363d; padding-bottom:8px;">${alertData.headline || alertData.event}</div>`;
-    body += `<div style="color:#fff; background:#0d1117; padding:12px; border-radius:4px; border:1px solid #21262d; margin-bottom:15px; font-family:monospace; font-size:0.85rem; white-space:pre-wrap; word-wrap:break-word;">${alertData.description}</div>`;
+    
     if (alertData.instruction) {
         body += `<div style="color:#ffcc00; font-weight:bold; margin-bottom:5px;"><i class="fa-solid fa-shield-halved"></i> RECOMMENDED ACTIONS:</div>`;
         body += `<div style="color:#00ffcc; background:#1f242c; padding:12px; border-radius:4px; border:1px solid #30363d; font-family:monospace; font-size:0.85rem; white-space:pre-wrap; word-wrap:break-word;">${alertData.instruction}</div>`;
     }
-    openFloatingModal(`MOUNT HOLLY NWS ALERT DETAILS`, body);
+    
+    openFloatingModal(`PENNSYLVANIA ALERT DETAILS`, body);
 }
 
 function getAQIColorSpecs(aqiValue) {
@@ -630,7 +445,6 @@ function fetchNOAATides() {
         fetch(`${baseUrl}&product=air_temperature`).then(r => r.json())
     ]).then(([wlMllw, wlNavd, predsMllw, airTemp]) => {
         
-        // Extracting latest available array indices for the gauge metrics
         const latestWlMllw = wlMllw.data ? wlMllw.data[wlMllw.data.length - 1] : null;
         const latestWlNavd = wlNavd.data ? wlNavd.data[wlNavd.data.length - 1] : null;
         const latestAirTemp = airTemp.data ? airTemp.data[airTemp.data.length - 1] : null;
@@ -642,7 +456,6 @@ function fetchNOAATides() {
 
         $('#noaa-gauges').html(gaugeHtml || '<span style="color:#ff5555;">NOAA FEED TIMEOUT</span>');
 
-        // Extracting the full arrays for the Chart.js dataset
         const labels = wlMllw.data ? wlMllw.data.map(d => {
             const timeParts = d.t.split(' ')[1].split(':');
             return `${timeParts[0]}:${timeParts[1]}`;
@@ -653,7 +466,6 @@ function fetchNOAATides() {
         const ctx = document.getElementById('noaaChart').getContext('2d');
         if(noaaChartInstance) noaaChartInstance.destroy();
         
-        // Define global charting visual defaults to match the dashboard aesthetic
         Chart.defaults.color = '#8b949e';
         Chart.defaults.font.family = "'Share Tech Mono', monospace";
         
@@ -747,7 +559,6 @@ setInterval(() => {
         countdownVal = 120;
         fetchNWSForecast();
         fetchPennsylvaniaAlerts();
-        fetchMountHollyAlerts();
         fetchAirQualityData();
         fetchNOAATides();
         fetchSchuylkillHydrology();
