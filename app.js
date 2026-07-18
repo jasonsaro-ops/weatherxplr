@@ -2,8 +2,6 @@
 const localLat = 40.0759;
 const localLon = -75.2996;
 let countdownVal = 120;
-let soundEnabled = false;
-let previousAlertIds = [];
 
 const AIRNOW_API_KEY = "E5AFEF36-80F6-4A42-AE38-F3C56E3AEAC4"; 
 
@@ -27,27 +25,27 @@ const config = {
         content: [
             {
                 type: 'column',
-                width: 35,
+                width: 40,
                 content: [
-                    { type: 'component', componentName: 'radarMap', title: 'WINDY DYNAMIC RADAR TRACKING', height: 50 },
-                    { type: 'component', componentName: 'localForecast', title: '7-DAY GEOGRAPHIC SYNOPTIC OUTLOOK', height: 50 }
-                ]
-            },
-            {
-                type: 'column',
-                width: 35,
-                content: [
-                    { type: 'component', componentName: 'hazardsAndRisk', title: 'CRITICAL HAZARDS & SPC CONVECTIVE RISK', height: 62 },
-                    { type: 'component', componentName: 'hydrologyFeed', title: 'SCHUYLKILL HYDROLOGY', height: 38 }
+                    { type: 'component', componentName: 'radarMap', title: 'WINDY DYNAMIC RADAR TRACKING & ARRAYS' },
+                    { type: 'component', componentName: 'localForecast', title: '7-DAY GEOGRAPHIC SYNOPTIC OUTLOOK (19428)' }
                 ]
             },
             {
                 type: 'column',
                 width: 30,
                 content: [
-                    { type: 'component', componentName: 'cloudMap', title: 'WINDY CLOUD ARRAYS', height: 43 },
-                    { type: 'component', componentName: 'airQualityPanel', title: 'REGIONAL AQI MATRIX', height: 16 },
-                    { type: 'component', componentName: 'noaaTides', title: 'NOAA TIDES (8545240)', height: 41 }
+                    { type: 'component', componentName: 'nwsAlerts', title: 'CRITICAL ENVIRONMENTAL SPECTRUM HAZARDS MATRIX' },
+                    { type: 'component', componentName: 'hydrologyFeed', title: 'SCHUYLKILL HYDROLOGIC REAL-TIME STREAMFLOW' }
+                ]
+            },
+            {
+                type: 'column',
+                width: 30,
+                content: [
+                    { type: 'component', componentName: 'cloudMap', title: 'WINDY DYNAMIC TRACKING & ARRAYS' },
+                    { type: 'component', componentName: 'airQualityPanel', title: 'REGIONAL AIR QUALITY MATRIX (AIRNOW LIVE)' },
+                    { type: 'component', componentName: 'noaaTides', title: 'NOAA TIDES & CURRENTS (STATION 8545240)' }
                 ]
             }
         ]
@@ -61,12 +59,17 @@ layout.registerComponent('radarMap', function(container) {
     container.getElement().html(`
         <div style="position:relative; width:100%; height:100%; background:#0d1117;">
             <div style="position:absolute; top:15px; right:15px; z-index:999;">
-                <select id="windyLayerSelect" style="background: rgba(33, 38, 45, 0.9); color: #00ffcc; border: 1px solid #00ffcc; padding: 6px 10px; font-family: 'Share Tech Mono', monospace; font-size: 0.85rem; border-radius: 4px; cursor: pointer; outline: none;">
+                <select id="windyLayerSelect" style="background: rgba(33, 38, 45, 0.9); color: #00ffcc; border: 1px solid #00ffcc; padding: 6px 10px; font-family: 'Share Tech Mono', monospace; font-size: 0.85rem; border-radius: 4px; cursor: pointer; box-shadow: 0 0 15px rgba(0,255,204,0.3); outline: none;">
                     <option value="radar">Weather Radar</option>
                     <option value="satellite">Satellite</option>
                     <option value="wind">Wind</option>
                     <option value="rain">Rain</option>
                     <option value="thunder">Thunderstorms</option>
+                    <option value="temp">Temperature</option>
+                    <option value="clouds">Clouds</option>
+                    <option value="waves">Waves</option>
+                    <option value="thermals">Thermals</option>
+                    <option value="cape">CAPE Index</option>
                 </select>
             </div>
             <iframe id="windyIframe" src="https://embed.windy.com/embed.html?type=map&location=coordinates&metricRain=in&metricTemp=f&metricWind=mph&zoom=8&overlay=radar&product=radar&level=surface&lat=${localLat}&lon=${localLon}&message=true" style="width:100%; height:100%; border:none;"></iframe>
@@ -89,12 +92,23 @@ layout.registerComponent('cloudMap', function(container) {
     container.getElement().html(`
         <div style="position:relative; width:100%; height:100%; background:#0d1117;">
             <div style="position:absolute; top:15px; right:15px; z-index:999;">
-                <select id="windyCloudLayerSelect" style="background: rgba(33, 38, 45, 0.9); color: #00ffcc; border: 1px solid #00ffcc; padding: 6px 10px; font-family: 'Share Tech Mono', monospace; font-size: 0.85rem; border-radius: 4px; cursor: pointer; outline: none;">
+                <select id="windyCloudLayerSelect" style="background: rgba(33, 38, 45, 0.9); color: #00ffcc; border: 1px solid #00ffcc; padding: 6px 10px; font-family: 'Share Tech Mono', monospace; font-size: 0.85rem; border-radius: 4px; cursor: pointer; box-shadow: 0 0 15px rgba(0,255,204,0.3); outline: none;">
+                    <option value="radar">Weather Radar</option>
+                    <option value="satellite">Satellite</option>
+                    <option value="wind">Wind</option>
+                    <option value="rain">Rain</option>
+                    <option value="thunder">Thunderstorms</option>
+                    <option value="temp">Temperature</option>
                     <option value="clouds" selected>Clouds</option>
                     <option value="highclouds">High Clouds</option>
                     <option value="mediumclouds">Medium Clouds</option>
                     <option value="lowclouds">Low Clouds</option>
                     <option value="fog">Fog</option>
+                    <option value="cloudtop">Cloud Tops</option>
+                    <option value="cloudbase">Cloud Base</option>
+                    <option value="waves">Waves</option>
+                    <option value="thermals">Thermals</option>
+                    <option value="cape">CAPE Index</option>
                 </select>
             </div>
             <iframe id="windyCloudIframe" src="https://embed.windy.com/embed.html?type=map&location=coordinates&metricRain=in&metricTemp=f&metricWind=mph&zoom=8&overlay=clouds&product=gfs&level=surface&lat=${localLat}&lon=${localLon}&message=true" style="width:100%; height:100%; border:none;"></iframe>
@@ -107,7 +121,8 @@ layout.registerComponent('cloudMap', function(container) {
         
         select.on('change', function() {
             const layer = this.value;
-            iframe.src = `https://embed.windy.com/embed.html?type=map&location=coordinates&metricRain=in&metricTemp=f&metricWind=mph&zoom=8&overlay=${layer}&product=gfs&level=surface&lat=${localLat}&lon=${localLon}&message=true`;
+            const product = (layer === 'radar' || layer === 'satellite') ? layer : 'gfs';
+            iframe.src = `https://embed.windy.com/embed.html?type=map&location=coordinates&metricRain=in&metricTemp=f&metricWind=mph&zoom=8&overlay=${layer}&product=${product}&level=surface&lat=${localLat}&lon=${localLon}&message=true`;
         });
     }, 200);
 });
@@ -117,27 +132,16 @@ layout.registerComponent('localForecast', function(container) {
     container.on('open', fetchNWSForecast);
 });
 
-// Unified Component combining NWS Alerts and SPC Convective Risk
-layout.registerComponent('hazardsAndRisk', function(container) {
+layout.registerComponent('nwsAlerts', function(container) {
     container.getElement().html(`
-        <div class="weather-component" style="display: flex; flex-direction: column; justify-content: space-between; height: 100%;">
-            <div style="flex-grow: 1; overflow-y: auto; margin-bottom: 12px; padding-right: 2px;">
-                <button id="sound-toggle-btn" class="sound-toggle" onclick="toggleSound()"><i class="fa-solid fa-bell-slash"></i> SOUND NOTIFICATIONS: OFF</button>
-                <div id="alerts-container">Interrogating matrix telemetry frames...</div>
-            </div>
-            <div style="border-top: 1px dashed #30363d; padding-top: 8px; flex-shrink: 0; background: #0d1117;">
-                <div style="font-size: 0.75rem; color: #8b949e; margin-bottom: 6px; text-transform: uppercase; letter-spacing: 1px;"><i class="fa-solid fa-shield-halved"></i> SPC Convective Outlook (CONUS)</div>
-                <div style="height: 145px; cursor: pointer; border: 1px solid #30363d; border-radius: 4px; overflow: hidden; display: flex; align-items: center; justify-content: center; background: #000;" 
-     onclick="openFloatingModal('SPC DAY 1 OUTLOOK - NATIONAL CONTEXT', '<img src=\\'https://www.spc.noaa.gov/products/outlook/day1otlk.gif?t=${Date.now()}\\' style=\\'width:100%;\\'>')">
-     <img id="spc-convective-outlook" src="https://www.spc.noaa.gov/products/outlook/day1otlk.gif?t=${Date.now()}">
-</div>
-            </div>
+        <div class="weather-component" style="position:relative;">
+            <div id="alerts-container">Interrogating matrix telemetry frames...</div>
         </div>`);
     container.on('open', fetchNWSAlerts);
 });
 
 layout.registerComponent('airQualityPanel', function(container) {
-    container.getElement().html(`<div class="weather-component" style="padding:10px; overflow: hidden;" id="aqi-container-target">Interrogating AirNow sensor frames...</div>`);
+    container.getElement().html(`<div class="weather-component" id="aqi-container-target">Interrogating AirNow sensor frames...</div>`);
     container.on('open', fetchAirQualityData);
 });
 
@@ -147,7 +151,7 @@ layout.registerComponent('noaaTides', function(container) {
             <div id="noaa-gauges" class="aqi-panel-wrap" style="margin-bottom: 5px;">
                 <span style="color:#8b949e; font-size:0.8rem;"><i class="fa-solid fa-satellite-dish"></i> Contacting NOAA sensors...</span>
             </div>
-            <div style="flex-grow:1; min-height:140px; position:relative; background:#161b22; border: 1px solid #30363d; border-radius:4px; padding:10px;">
+            <div style="flex-grow:1; min-height:180px; position:relative; background:#161b22; border: 1px solid #30363d; border-radius:4px; padding:10px;">
                 <canvas id="noaaChart"></canvas>
             </div>
         </div>
@@ -163,19 +167,6 @@ layout.registerComponent('hydrologyFeed', function(container) {
 layout.init();
 
 // --- Logic Implementation ---
-
-window.toggleSound = function() {
-    soundEnabled = !soundEnabled;
-    const btn = $('#sound-toggle-btn');
-    if(soundEnabled) {
-        btn.addClass('active');
-        btn.html('<i class="fa-solid fa-bell"></i> SOUND NOTIFICATIONS: ON');
-        new Audio('https://actions.google.com/sounds/v1/alarms/beep_short.ogg').play().catch(e => {});
-    } else {
-        btn.removeClass('active');
-        btn.html('<i class="fa-solid fa-bell-slash"></i> SOUND NOTIFICATIONS: OFF');
-    }
-};
 
 function fetchNWSForecast() {
     fetch(`https://api.weather.gov/points/${localLat},${localLon}`)
@@ -217,60 +208,27 @@ function openForecastDetails(index) {
 }
 
 function fetchNWSAlerts() {
-    // Broadened query to all of Pennsylvania (area=PA) to ensure alerts propagate to the dashboard
-    fetch(`https://api.weather.gov/alerts/active?area=PA`, {
-        headers: { 'Accept': 'application/geo+json' }
-    })
-        .then(res => {
-            if (!res.ok) throw new Error("NWS API Error");
-            return res.json();
-        })
+    fetch(`https://api.weather.gov/alerts/active?point=${localLat},${localLon}`)
+        .then(res => res.json())
         .then(data => {
             const container = $('#alerts-container');
-            if (!data.features || data.features.length === 0) {
-                container.html("<div style='padding: 10px; border: 1px solid #00ff55; background: rgba(0,255,85,0.1); border-radius: 4px; color:#00ff55; font-size:0.85rem;'>✓ SYSTEM CLEAN: NO ACTIVE HAZARD WARNINGS FOR PA</div>");
+            if (data.features.length === 0) {
+                container.html("<span style='color:#00ff55; font-size:0.85rem;'>✓ SYSTEM CLEAN: NO ACTIVE RADIAL HAZARD WARNINGS REPORTED</span>");
                 return;
             }
-
-            const currentAlertIds = data.features.map(f => f.properties.id);
-            const hasNewAlerts = currentAlertIds.some(id => !previousAlertIds.includes(id));
-            
-            if (hasNewAlerts && previousAlertIds.length > 0 && soundEnabled) {
-                new Audio('https://actions.google.com/sounds/v1/alarms/beep_short.ogg').play().catch(e => console.log('Audio blocked:', e));
-            }
-            previousAlertIds = currentAlertIds;
-
             let html = "";
             globalActiveAlertsCache = {};
-            
-            // Limit to top 15 alerts to prevent UI lag if the state is overwhelmed
-            const displayFeatures = data.features.slice(0, 15);
-            
-            displayFeatures.forEach(f => {
+            data.features.forEach(f => {
                 const props = f.properties;
                 globalActiveAlertsCache[props.id] = props;
-                
-                let sevColor = "#00ffcc"; 
-                let sevBg = "#161b22";
-                switch(props.severity) {
-                    case "Extreme": sevColor = "#ff00ff"; sevBg = "#260026"; break;
-                    case "Severe": sevColor = "#ff3333"; sevBg = "#260d0d"; break;
-                    case "Moderate": sevColor = "#ff9900"; sevBg = "#261700"; break;
-                    case "Minor": sevColor = "#ffff00"; sevBg = "#262600"; break;
-                    default: sevColor = "#8b949e"; sevBg = "#161b22"; break;
-                }
-
                 html += `
-                    <div class="alert-item" style="border-left: 4px solid ${sevColor}; background: ${sevBg};" onclick="openAlertDetails('${props.id}')">
-                        <div class="alert-title" style="color:${sevColor};"><i class="fa-solid fa-triangle-exclamation"></i> [${props.severity.toUpperCase()}] ${props.event}</div>
-                        <div style="font-size:0.8rem; color:#c9d1d9; margin-top:3px;">${props.headline || props.areaDesc}</div>
+                    <div class="alert-item" onclick="openAlertDetails('${props.id}')">
+                        <div class="alert-title"><i class="fa-solid fa-triangle-exclamation"></i> ${props.event}</div>
+                        <div style="font-size:0.8rem; color:#8b949e; margin-top:3px;">${props.headline || 'Localized event update.'}</div>
                     </div>`;
             });
             container.html(html);
-        }).catch(err => {
-            console.error("Hazards trace link breakdown:", err);
-            $('#alerts-container').html("<div style='padding: 10px; border: 1px solid #ff5555; background: rgba(255,85,85,0.1); border-radius: 4px; color:#ff5555; font-size:0.85rem;'>! NWS TELEMETRY TIMEOUT - UNABLE TO FETCH ALERTS</div>");
-        });
+        }).catch(err => console.error("Hazards trace link breakdown:", err));
 }
 
 function openAlertDetails(id) {
@@ -303,8 +261,8 @@ function fetchAirQualityData() {
             let html = `
                 <div class="aqi-station-row">
                     <div class="aqi-station-header">
-                        <span><i class="fa-solid fa-satellite-dish"></i> CONSHOHOCKEN AIR LOOP</span>
-                        <span style="color: #00ffcc; font-size: 0.75rem;">[LIVE]</span>
+                        <span><i class="fa-solid fa-satellite-dish"></i> CONSHOHOCKEN STATION LOOP (19428)</span>
+                        <span style="color: #00ffcc; font-size: 0.75rem;">[LIVE STREAM]</span>
                     </div>
                     <div class="aqi-panel-wrap">`;
             
@@ -314,8 +272,8 @@ function fetchAirQualityData() {
                 data.forEach(p => {
                     const profile = getAQIColorSpecs(p.AQI);
                     html += `
-                        <div class="aqi-block-metric" onclick="openFloatingModal('${p.ParameterName} DETAILS', '<h3 style=\\'color:${profile.color}\\'>Current Index: ${p.AQI} (${profile.label})</h3><p>Ensure local sensor telemetry remains uncompromised.</p>')">
-                            <div style="font-size:0.65rem; color:#8b949e; font-weight:bold; letter-spacing:1px;">${p.ParameterName}</div>
+                        <div class="aqi-block-metric">
+                            <div style="font-size:0.7rem; color:#8b949e; font-weight:bold; letter-spacing:1px;">${p.ParameterName} POLLUTANT</div>
                             <div class="aqi-score-callout" style="color:${profile.color}">${p.AQI}</div>
                             <span class="aqi-pill-badge" style="background-color:${profile.color}">${profile.label}</span>
                         </div>`;
@@ -346,17 +304,19 @@ function fetchNOAATides() {
         fetch(`${baseUrl}&product=air_temperature`).then(r => r.json())
     ]).then(([wlMllw, wlNavd, predsMllw, airTemp]) => {
         
+        // Extracting latest available array indices for the gauge metrics
         const latestWlMllw = wlMllw.data ? wlMllw.data[wlMllw.data.length - 1] : null;
         const latestWlNavd = wlNavd.data ? wlNavd.data[wlNavd.data.length - 1] : null;
         const latestAirTemp = airTemp.data ? airTemp.data[airTemp.data.length - 1] : null;
 
         let gaugeHtml = '';
-        if (latestWlMllw) gaugeHtml += `<div class="aqi-block-metric" style="padding:6px; cursor:default;"><div style="font-size:0.65rem; color:#8b949e; font-weight:bold;">WATER LVL (MLLW)</div><div class="aqi-score-callout" style="color:#00ffcc; font-size:1.3rem;">${latestWlMllw.v} ft</div></div>`;
-        if (latestWlNavd) gaugeHtml += `<div class="aqi-block-metric" style="padding:6px; cursor:default;"><div style="font-size:0.65rem; color:#8b949e; font-weight:bold;">WATER LVL (NAVD)</div><div class="aqi-score-callout" style="color:#00ccff; font-size:1.3rem;">${latestWlNavd.v} ft</div></div>`;
-        if (latestAirTemp) gaugeHtml += `<div class="aqi-block-metric" style="padding:6px; cursor:default;"><div style="font-size:0.65rem; color:#8b949e; font-weight:bold;">AIR TEMP</div><div class="aqi-score-callout" style="color:#ff9900; font-size:1.3rem;">${latestAirTemp.v}°F</div></div>`;
+        if (latestWlMllw) gaugeHtml += `<div class="aqi-block-metric" style="padding:6px;"><div style="font-size:0.65rem; color:#8b949e; font-weight:bold;">WATER LVL (MLLW)</div><div class="aqi-score-callout" style="color:#00ffcc; font-size:1.3rem;">${latestWlMllw.v} ft</div></div>`;
+        if (latestWlNavd) gaugeHtml += `<div class="aqi-block-metric" style="padding:6px;"><div style="font-size:0.65rem; color:#8b949e; font-weight:bold;">WATER LVL (NAVD)</div><div class="aqi-score-callout" style="color:#00ccff; font-size:1.3rem;">${latestWlNavd.v} ft</div></div>`;
+        if (latestAirTemp) gaugeHtml += `<div class="aqi-block-metric" style="padding:6px;"><div style="font-size:0.65rem; color:#8b949e; font-weight:bold;">AIR TEMP</div><div class="aqi-score-callout" style="color:#ff9900; font-size:1.3rem;">${latestAirTemp.v}°F</div></div>`;
 
         $('#noaa-gauges').html(gaugeHtml || '<span style="color:#ff5555;">NOAA FEED TIMEOUT</span>');
 
+        // Extracting the full arrays for the Chart.js dataset
         const labels = wlMllw.data ? wlMllw.data.map(d => {
             const timeParts = d.t.split(' ')[1].split(':');
             return `${timeParts[0]}:${timeParts[1]}`;
@@ -367,6 +327,7 @@ function fetchNOAATides() {
         const ctx = document.getElementById('noaaChart').getContext('2d');
         if(noaaChartInstance) noaaChartInstance.destroy();
         
+        // Define global charting visual defaults to match the dashboard aesthetic
         Chart.defaults.color = '#8b949e';
         Chart.defaults.font.family = "'Share Tech Mono', monospace";
         
@@ -375,11 +336,43 @@ function fetchNOAATides() {
             data: {
                 labels: labels,
                 datasets: [
-                    { label: 'Observed (MLLW) ft', data: dataMllw, borderColor: '#00ffcc', backgroundColor: 'rgba(0, 255, 204, 0.1)', borderWidth: 2, pointRadius: 0, fill: true, tension: 0.4 },
-                    { label: 'Predicted (MLLW) ft', data: dataPreds.slice(0, labels.length), borderColor: '#ff5555', borderDash: [4, 4], borderWidth: 2, pointRadius: 0, fill: false, tension: 0.4 }
+                    {
+                        label: 'Observed (MLLW) ft',
+                        data: dataMllw,
+                        borderColor: '#00ffcc',
+                        backgroundColor: 'rgba(0, 255, 204, 0.1)',
+                        borderWidth: 2,
+                        pointRadius: 0,
+                        fill: true,
+                        tension: 0.4
+                    },
+                    {
+                        label: 'Predicted (MLLW) ft',
+                        data: dataPreds.slice(0, labels.length),
+                        borderColor: '#ff5555',
+                        borderDash: [4, 4],
+                        borderWidth: 2,
+                        pointRadius: 0,
+                        fill: false,
+                        tension: 0.4
+                    }
                 ]
             },
-            options: { responsive: true, maintainAspectRatio: false, interaction: { intersect: false, mode: 'index' }, plugins: { legend: { display: true, position: 'top', labels: { boxWidth: 12, usePointStyle: true } } }, scales: { x: { ticks: { maxTicksLimit: 6 }, grid: { color: '#21262d' } }, y: { grid: { color: '#21262d' } } } }
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                interaction: {
+                    intersect: false,
+                    mode: 'index',
+                },
+                plugins: {
+                    legend: { display: true, position: 'top', labels: { boxWidth: 12, usePointStyle: true } }
+                },
+                scales: {
+                    x: { ticks: { maxTicksLimit: 6 }, grid: { color: '#21262d' } },
+                    y: { grid: { color: '#21262d' } }
+                }
+            }
         });
 
     }).catch(err => {
@@ -421,7 +414,7 @@ function closeFloatingModal() {
     document.getElementById('modalBody').innerHTML = ''; 
 }
 
-// Global Core Sync Timer (Triggers exactly every 120s / 2 Minutes)
+// Global Core Sync Timer
 setInterval(() => {
     countdownVal--;
     if(countdownVal <= 0) {
