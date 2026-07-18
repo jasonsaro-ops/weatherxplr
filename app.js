@@ -107,7 +107,7 @@ layout.registerComponent('radarMap', function(container) {
     container.getElement().html(`
         <div style="position:relative; width:100%; height:100%; background:#0d1117;">
             <div style="position:absolute; top:15px; right:15px; z-index:999;">
-                <select id="windyLayerSelect" style="background: rgba(33, 38, 45, 0.9); color: #00ffcc; border: 1px solid #00ffcc; padding: 6px 10px; font-family: 'Share Tech Mono', monospace; font-size:0.8rem;">
+                <select id="windyLayerSelect" style="background: rgba(33, 38, 45, 0.9); color: #00ffcc; border: 1px solid #00ffcc; padding: 6px 10px; font-family: 'Share Tech Mono', monospace; fo[...]
                     <option value="radar">Weather Radar</option>
                     <option value="satellite">Satellite</option>
                     <option value="wind">Wind</option>
@@ -120,7 +120,7 @@ layout.registerComponent('radarMap', function(container) {
                     <option value="cape">CAPE Index</option>
                 </select>
             </div>
-            <iframe id="windyIframe" src="https://embed.windy.com/embed.html?type=map&location=coordinates&metricRain=in&metricTemp=f&metricWind=mph&zoom=8&overlay=radar&product=radar&level=surface&lat=40.0759&lon=-75.2996" style="width:100%; height:100%; border:none;"></iframe>
+            <iframe id="windyIframe" src="https://embed.windy.com/embed.html?type=map&location=coordinates&metricRain=in&metricTemp=f&metricWind=mph&zoom=8&overlay=radar&product=radar&level=surfa[...]
         </div>
     `);
     
@@ -131,7 +131,7 @@ layout.registerComponent('radarMap', function(container) {
         select.on('change', function() {
             const layer = this.value;
             const product = (layer === 'radar' || layer === 'satellite') ? layer : 'gfs';
-            iframe.src = `https://embed.windy.com/embed.html?type=map&location=coordinates&metricRain=in&metricTemp=f&metricWind=mph&zoom=8&overlay=${layer}&product=${product}&level=surface&lat=40.0759&lon=-75.2996`;
+            iframe.src = `https://embed.windy.com/embed.html?type=map&location=coordinates&metricRain=in&metricTemp=f&metricWind=mph&zoom=8&overlay=${layer}&product=${product}&level=surface&lat=4[...]
         });
     }, 200);
 });
@@ -140,7 +140,7 @@ layout.registerComponent('cloudMap', function(container) {
     container.getElement().html(`
         <div style="position:relative; width:100%; height:100%; background:#0d1117;">
             <div style="position:absolute; top:15px; right:15px; z-index:999;">
-                <select id="windyCloudLayerSelect" style="background: rgba(33, 38, 45, 0.9); color: #00ffcc; border: 1px solid #00ffcc; padding: 6px 10px; font-family: 'Share Tech Mono', monospace; font-size:0.8rem;">
+                <select id="windyCloudLayerSelect" style="background: rgba(33, 38, 45, 0.9); color: #00ffcc; border: 1px solid #00ffcc; padding: 6px 10px; font-family: 'Share Tech Mono', monospac[...]
                     <option value="radar">Weather Radar</option>
                     <option value="satellite">Satellite</option>
                     <option value="wind">Wind</option>
@@ -159,7 +159,7 @@ layout.registerComponent('cloudMap', function(container) {
                     <option value="cape">CAPE Index</option>
                 </select>
             </div>
-            <iframe id="windyCloudIframe" src="https://embed.windy.com/embed.html?type=map&location=coordinates&metricRain=in&metricTemp=f&metricWind=mph&zoom=8&overlay=clouds&product=gfs&level=surface&lat=40.0759&lon=-75.2996" style="width:100%; height:100%; border:none;"></iframe>
+            <iframe id="windyCloudIframe" src="https://embed.windy.com/embed.html?type=map&location=coordinates&metricRain=in&metricTemp=f&metricWind=mph&zoom=8&overlay=clouds&product=gfs&level=s[...]
         </div>
     `);
     
@@ -170,7 +170,7 @@ layout.registerComponent('cloudMap', function(container) {
         select.on('change', function() {
             const layer = this.value;
             const product = (layer === 'radar' || layer === 'satellite') ? layer : 'gfs';
-            iframe.src = `https://embed.windy.com/embed.html?type=map&location=coordinates&metricRain=in&metricTemp=f&metricWind=mph&zoom=8&overlay=${layer}&product=${product}&level=surface&lat=40.0759&lon=-75.2996`;
+            iframe.src = `https://embed.windy.com/embed.html?type=map&location=coordinates&metricRain=in&metricTemp=f&metricWind=mph&zoom=8&overlay=${layer}&product=${product}&level=surface&lat=4[...]
         });
     }, 200);
 });
@@ -185,7 +185,7 @@ layout.registerComponent('nwsAlerts', function(container) {
         <div class="weather-component" style="position:relative;">
             <div style="margin-bottom:10px; padding-bottom:8px; border-bottom:1px solid #30363d; display:flex; justify-content:space-between; align-items:center;">
                 <div style="font-size:0.85rem; color:#ffcc00; font-weight:bold;"><i class="fa-solid fa-triangle-exclamation"></i> NWS ALERTS</div>
-                <button id="soundToggleBtn" onclick="toggleAlertSound()" style="background: #21262d; border: 1px solid #30363d; color: #8b949e; padding: 3px 8px; border-radius: 3px; cursor: pointer; font-family: 'Share Tech Mono', monospace; font-size: 0.7rem; transition: all 0.2s;" title="Toggle alert sound">
+                <button id="soundToggleBtn" onclick="toggleAlertSound()" style="background: #21262d; border: 1px solid #30363d; color: #8b949e; padding: 3px 8px; border-radius: 3px; cursor: point[...]
                     <i class="fa-solid fa-volume-mute"></i> SOUND OFF
                 </button>
             </div>
@@ -195,7 +195,7 @@ layout.registerComponent('nwsAlerts', function(container) {
 });
 
 layout.registerComponent('airQualityPanel', function(container) {
-    container.getElement().html(`<div class="weather-component" id="aqi-container-target">Interrogating AirNow sensor frames...</div>`);
+    container.getElement().html(`<div class="weather-component" id="aqi-container-target" style="display:flex; flex-direction:column; height:100%; overflow:hidden;">Interrogating AirNow sensor frames...</div>`);
     container.on('open', fetchAirQualityData);
 });
 
@@ -259,7 +259,7 @@ function fetchNWSForecast() {
         .then(res => res.json())
         .then(data => {
             globalForecastDataCache = data.properties.periods;
-            let html = `<div id="current-obs" style="margin-bottom:15px; font-size:1.1rem; color:#fff; padding:10px; background:#161b22; border:1px solid #30363d; border-radius:4px;">CURRENT CONDITIONS - 19428 CONSHOHOCKEN PA</div>`;
+            let html = `<div id="current-obs" style="margin-bottom:15px; font-size:1.1rem; color:#fff; padding:10px; background:#161b22; border:1px solid #30363d; border-radius:4px;">CURRENT COND[...]
             html += `<div class="forecast-grid">`;
             
             globalForecastDataCache.forEach((p, i) => {
@@ -343,9 +343,9 @@ function fetchPennsylvaniaAlerts() {
                     const alertStyle = isCritical ? 'border-left: 4px solid #ff0000; background: #3d1a1a;' : 'border-left: 4px solid #ff6600; background: #2d2416;';
                     
                     html += `
-                        <div class="alert-item" style="${alertStyle} padding: 8px; margin-bottom: 6px; border-radius: 2px; cursor: pointer; font-size:0.75rem;" onclick="openAlertDetails('${alertId}')">
+                        <div class="alert-item" style="${alertStyle} padding: 8px; margin-bottom: 6px; border-radius: 2px; cursor: pointer; font-size:0.75rem;" onclick="openAlertDetails('${alertI[...]
                             <div style="color: ${isCritical ? '#ff0000' : '#ffaa33'}; font-weight: bold; text-transform: uppercase;">${props.event}</div>
-                            <div style="color:#8b949e; margin-top:2px; font-size:0.7rem;">${props.areaDesc} | ${props.headline ? props.headline.substring(0, 40) + (props.headline.length > 40 ? '...' : '') : 'Event update.'}</div>
+                            <div style="color:#8b949e; margin-top:2px; font-size:0.7rem;">${props.areaDesc} | ${props.headline ? props.headline.substring(0, 40) + (props.headline.length > 40 ? '.[...]
                         </div>`;
                 });
                 html += `</div>`;
@@ -373,11 +373,11 @@ function openAlertDetails(id) {
     
     let body = `<div style="color:#ff5555; font-weight:bold; margin-bottom:10px; border-bottom:1px solid #30363d; padding-bottom:8px;">${alertData.headline || alertData.event}</div>`;
     body += `<div style="color:#8b949e; margin-bottom:8px;"><strong>Area:</strong> ${alertData.areaDesc}</div>`;
-    body += `<div style="color:#fff; background:#0d1117; padding:12px; border-radius:4px; border:1px solid #21262d; margin-bottom:15px; font-family:monospace; font-size:0.85rem; white-space:pre-wrap; word-wrap:break-word;">${alertData.description}</div>`;
+    body += `<div style="color:#fff; background:#0d1117; padding:12px; border-radius:4px; border:1px solid #21262d; margin-bottom:15px; font-family:monospace; font-size:0.85rem; white-space:pre-w[...]
     
     if (alertData.instruction) {
         body += `<div style="color:#ffcc00; font-weight:bold; margin-bottom:5px;"><i class="fa-solid fa-shield-halved"></i> RECOMMENDED ACTIONS:</div>`;
-        body += `<div style="color:#00ffcc; background:#1f242c; padding:12px; border-radius:4px; border:1px solid #30363d; font-family:monospace; font-size:0.85rem; white-space:pre-wrap; word-wrap:break-word;">${alertData.instruction}</div>`;
+        body += `<div style="color:#00ffcc; background:#1f242c; padding:12px; border-radius:4px; border:1px solid #30363d; font-family:monospace; font-size:0.85rem; white-space:pre-wrap; word-wra[...]
     }
     
     openFloatingModal(`PENNSYLVANIA ALERT DETAILS`, body);
@@ -399,7 +399,7 @@ function fetchAirQualityData() {
         .then(res => res.json())
         .then(data => {
             let html = `
-                <div style="margin-bottom:8px; padding-bottom:6px; border-bottom:1px dashed #30363d;">
+                <div style="margin-bottom:10px; padding-bottom:6px; border-bottom:1px dashed #30363d;">
                     <div style="font-size:0.85rem; color:#fff;">
                         <i class="fa-solid fa-satellite-dish"></i> CONSHOHOCKEN (19428)
                         <span style="color: #00ffcc; font-size: 0.7rem; margin-left:4px;">[LIVE]</span>
@@ -409,17 +409,59 @@ function fetchAirQualityData() {
             if(!data || data.length === 0) {
                 html += `<div style="color:#ff8800; font-size:0.75rem; padding:8px 0;">NO SENSOR DATA</div>`;
             } else {
-                // Create a grid for tighter layout
-                html += `<div style="display:grid; grid-template-columns: 1fr 1fr; gap:6px;">`;
-                data.forEach(p => {
-                    const profile = getAQIColorSpecs(p.AQI);
+                // Group data by station
+                const stations = {};
+                data.forEach(item => {
+                    const station = item.ReportingArea || 'Unknown Station';
+                    if (!stations[station]) {
+                        stations[station] = [];
+                    }
+                    stations[station].push(item);
+                });
+                
+                html += `<div style="display:flex; flex-direction:column; gap:10px; height:100%; overflow-y:auto;">`;
+                
+                // For each station, create a detailed card
+                Object.entries(stations).forEach(([stationName, readings]) => {
+                    // Find the main AQI reading
+                    const mainAqi = readings.find(r => r.ParameterName === 'O3' || r.ParameterName === 'PM2.5') || readings[0];
+                    const profile = getAQIColorSpecs(mainAqi.AQI);
+                    
                     html += `
-                        <div style="background: #0d1117; border: 1px solid #21262d; border-radius: 3px; padding:6px; text-align:center;">
-                            <div style="font-size:0.65rem; color:#8b949e; font-weight:bold; margin-bottom:3px; text-transform:uppercase; letter-spacing:0.5px;">${p.ParameterName}</div>
-                            <div style="font-size:1.6rem; color:${profile.color}; font-weight:bold;">${p.AQI}</div>
-                            <div style="font-size:0.6rem; color:${profile.color}; font-weight:bold; margin-top:2px;">${profile.label}</div>
+                        <div style="background:#161b22; border:1px solid #30363d; border-radius:4px; padding:10px; flex-shrink:0;">
+                            <div style="font-size:0.8rem; color:#00ffcc; font-weight:bold; margin-bottom:8px; border-bottom:1px solid #30363d; padding-bottom:6px;">
+                                📍 ${stationName}
+                            </div>
+                            <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-bottom:8px;">`;
+                    
+                    // Show primary AQI prominently
+                    html += `
+                                <div style="background:#0d1117; border:2px solid ${profile.color}; border-radius:4px; padding:8px; text-align:center; grid-column:1/3;">
+                                    <div style="font-size:0.7rem; color:#8b949e; font-weight:bold; text-transform:uppercase; margin-bottom:4px;">PRIMARY AQI</div>
+                                    <div style="font-size:2rem; color:${profile.color}; font-weight:bold; margin:4px 0;">${mainAqi.AQI}</div>
+                                    <div style="font-size:0.65rem; color:${profile.color}; font-weight:bold;">${profile.label}</div>
+                                    <div style="font-size:0.6rem; color:#8b949e; margin-top:4px;">${mainAqi.ParameterName}</div>
+                                </div>`;
+                    
+                    // Show all pollutants
+                    readings.forEach(reading => {
+                        const pollutantProfile = getAQIColorSpecs(reading.AQI);
+                        html += `
+                                <div style="background:#0d1117; border:1px solid #21262d; border-radius:3px; padding:6px; text-align:center;">
+                                    <div style="font-size:0.65rem; color:#8b949e; font-weight:bold; margin-bottom:2px; text-transform:uppercase; letter-spacing:0.5px;">${reading.ParameterName}</div>
+                                    <div style="font-size:1.4rem; color:${pollutantProfile.color}; font-weight:bold;">${reading.AQI}</div>
+                                    <div style="font-size:0.55rem; color:${pollutantProfile.color}; font-weight:bold;">${pollutantProfile.label}</div>
+                                </div>`;
+                    });
+                    
+                    html += `
+                            </div>
+                            <div style="font-size:0.65rem; color:#8b949e; border-top:1px solid #30363d; padding-top:6px;">
+                                <i class="fa-solid fa-clock"></i> Updated: ${new Date().toLocaleTimeString()}
+                            </div>
                         </div>`;
                 });
+                
                 html += `</div>`;
             }
             $('#aqi-container-target').html(html);
@@ -451,9 +493,9 @@ function fetchNOAATides() {
         const latestAirTemp = airTemp.data ? airTemp.data[airTemp.data.length - 1] : null;
 
         let gaugeHtml = `<div style="display:grid; grid-template-columns: 1fr 1fr 1fr; gap:6px;">`;
-        if (latestWlMllw) gaugeHtml += `<div style="background:#161b22; border:1px solid #30363d; border-radius:3px; padding:6px; text-align:center;"><div style="font-size:0.65rem; color:#8b949e; font-weight:bold; margin-bottom:2px;">WATER LVL</div><div style="font-size:1.5rem; color:#00ffcc; font-weight:bold;">${latestWlMllw.v}</div><div style="font-size:0.6rem; color:#8b949e;">ft MLLW</div></div>`;
-        if (latestWlNavd) gaugeHtml += `<div style="background:#161b22; border:1px solid #30363d; border-radius:3px; padding:6px; text-align:center;"><div style="font-size:0.65rem; color:#8b949e; font-weight:bold; margin-bottom:2px;">WATER LVL</div><div style="font-size:1.5rem; color:#00ffcc; font-weight:bold;">${latestWlNavd.v}</div><div style="font-size:0.6rem; color:#8b949e;">ft NAVD</div></div>`;
-        if (latestAirTemp) gaugeHtml += `<div style="background:#161b22; border:1px solid #30363d; border-radius:3px; padding:6px; text-align:center;"><div style="font-size:0.65rem; color:#8b949e; font-weight:bold; margin-bottom:2px;">AIR TEMP</div><div style="font-size:1.5rem; color:#ffaa00; font-weight:bold;">${latestAirTemp.v}°</div><div style="font-size:0.6rem; color:#8b949e;">F</div></div>`;
+        if (latestWlMllw) gaugeHtml += `<div style="background:#161b22; border:1px solid #30363d; border-radius:3px; padding:6px; text-align:center;"><div style="font-size:0.65rem; color:#8b949e;[...]
+        if (latestWlNavd) gaugeHtml += `<div style="background:#161b22; border:1px solid #30363d; border-radius:3px; padding:6px; text-align:center;"><div style="font-size:0.65rem; color:#8b949e;[...]
+        if (latestAirTemp) gaugeHtml += `<div style="background:#161b22; border:1px solid #30363d; border-radius:3px; padding:6px; text-align:center;"><div style="font-size:0.65rem; color:#8b949e[...]
         gaugeHtml += `</div>`;
 
         $('#noaa-gauges').html(gaugeHtml || '<span style="color:#ff5555;">NOAA TIMEOUT</span>');
