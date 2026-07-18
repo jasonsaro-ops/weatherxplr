@@ -2,6 +2,8 @@
 const localLat = 40.0759;
 const localLon = -75.2996;
 let countdownVal = 120;
+let soundEnabled = false;
+let previousAlertIds = [];
 
 const AIRNOW_API_KEY = "E5AFEF36-80F6-4A42-AE38-F3C56E3AEAC4"; 
 
@@ -25,27 +27,28 @@ const config = {
         content: [
             {
                 type: 'column',
-                width: 40,
+                width: 35,
                 content: [
-                    { type: 'component', componentName: 'radarMap', title: 'WINDY DYNAMIC RADAR TRACKING & ARRAYS' },
-                    { type: 'component', componentName: 'localForecast', title: '7-DAY GEOGRAPHIC SYNOPTIC OUTLOOK (19428)' }
+                    { type: 'component', componentName: 'radarMap', title: 'WINDY DYNAMIC RADAR TRACKING' },
+                    { type: 'component', componentName: 'localForecast', title: '7-DAY GEOGRAPHIC SYNOPTIC OUTLOOK' }
+                ]
+            },
+            {
+                type: 'column',
+                width: 35,
+                content: [
+                    { type: 'component', componentName: 'nwsAlerts', title: 'CRITICAL HAZARDS MATRIX (PHL)' },
+                    { type: 'component', componentName: 'spcRisk', title: 'SPC CONVECTIVE MESOSCALE MATRIX' },
+                    { type: 'component', componentName: 'hydrologyFeed', title: 'SCHUYLKILL HYDROLOGY' }
                 ]
             },
             {
                 type: 'column',
                 width: 30,
                 content: [
-                    { type: 'component', componentName: 'nwsAlerts', title: 'CRITICAL ENVIRONMENTAL SPECTRUM HAZARDS MATRIX' },
-                    { type: 'component', componentName: 'hydrologyFeed', title: 'SCHUYLKILL HYDROLOGIC REAL-TIME STREAMFLOW' }
-                ]
-            },
-            {
-                type: 'column',
-                width: 30,
-                content: [
-                    { type: 'component', componentName: 'cloudMap', title: 'WINDY DYNAMIC TRACKING & ARRAYS' },
-                    { type: 'component', componentName: 'airQualityPanel', title: 'REGIONAL AIR QUALITY MATRIX (AIRNOW LIVE)' },
-                    { type: 'component', componentName: 'noaaTides', title: 'NOAA TIDES & CURRENTS (STATION 8545240)' }
+                    { type: 'component', componentName: 'cloudMap', title: 'WINDY CLOUD ARRAYS' },
+                    { type: 'component', componentName: 'airQualityPanel', title: 'REGIONAL AQI MATRIX' },
+                    { type: 'component', componentName: 'noaaTides', title: 'NOAA TIDES (8545240)' }
                 ]
             }
         ]
@@ -135,9 +138,17 @@ layout.registerComponent('localForecast', function(container) {
 layout.registerComponent('nwsAlerts', function(container) {
     container.getElement().html(`
         <div class="weather-component" style="position:relative;">
+            <button id="sound-toggle-btn" class="sound-toggle" onclick="toggleSound()"><i class="fa-solid fa-bell-slash"></i> SOUND NOTIFICATIONS: OFF</button>
             <div id="alerts-container">Interrogating matrix telemetry frames...</div>
         </div>`);
     container.on('open', fetchNWSAlerts);
+});
+
+layout.registerComponent('spcRisk', function(container) {
+    container.getElement().html(`
+        <div class="weather-component" style="padding:0; display:flex; flex-direction:column; overflow:hidden;">
+            <div style="flex-grow:1; background:url('https://www.spc.noaa.gov/products/outlook/day1otlk_sm.gif') center/contain no-repeat #000; cursor:pointer;" onclick="openFloatingModal('SPC DAY 1 OUTLOOK', '<img src=\\'https://www.spc.noaa.gov/products/outlook/day1otlk.gif\\' style=\\'width:100%;\\'>')"></div>
+        </div>`);
 });
 
 layout.registerComponent('airQualityPanel', function(container) {
@@ -167,6 +178,19 @@ layout.registerComponent('hydrologyFeed', function(container) {
 layout.init();
 
 // --- Logic Implementation ---
+
+window.toggleSound = function() {
+    soundEnabled = !soundEnabled;
+    const btn = $('#sound-toggle-btn');
+    if(soundEnabled) {
+        btn.addClass('active');
+        btn.html('<i class="fa-solid fa-bell"></i> SOUND NOTIFICATIONS: ON');
+        new Audio('https://actions.google.com/sounds/v1/alarms/beep_short.ogg').play().catch(e => {}); // Test beep
+    } else {
+        btn.removeClass('active');
+        btn.html('<i class="fa-solid fa-bell-slash"></i> SOUND NOTIFICATIONS: OFF');
+    }
+};
 
 function fetchNWSForecast() {
     fetch(`https://api.weather.gov/points/${localLat},${localLon}`)
@@ -208,12 +232,24 @@ function openForecastDetails(index) {
 }
 
 function fetchNWSAlerts() {
-    fetch(`https://api.weather.gov/alerts/active?point=${localLat},${localLon}`)
+    // Philadelphia Area Zones: PAZ071 (Philly), PAZ070 (Delco), PAZ106 (Montco)
+    fetch(`https://api.weather.gov/alerts/active?zone=PAZ071,PAZ070,PAZ106`)
         .then(res => res.json())
         .then(data => {
             const container = $('#alerts-container');
+            if (!data.features) return;
+
+            const currentAlertIds = data.features.map(f => f.properties.id);
+            const hasNewAlerts = currentAlertIds.some(id => !previousAlertIds.includes(id));
+            
+            // Audio Alert Logic
+            if (hasNewAlerts && previousAlertIds.length > 0 && soundEnabled) {
+                new Audio('https://actions.google.com/sounds/v1/alarms/beep_short.ogg').play().catch(e => console.log('Audio blocked:', e));
+            }
+            previousAlertIds = currentAlertIds;
+
             if (data.features.length === 0) {
-                container.html("<span style='color:#00ff55; font-size:0.85rem;'>✓ SYSTEM CLEAN: NO ACTIVE RADIAL HAZARD WARNINGS REPORTED</span>");
+                container.html("<span style='color:#00ff55; font-size:0.85rem;'>✓ SYSTEM CLEAN: NO ACTIVE HAZARD WARNINGS FOR PHL AREA</span>");
                 return;
             }
             let html = "";
@@ -221,10 +257,22 @@ function fetchNWSAlerts() {
             data.features.forEach(f => {
                 const props = f.properties;
                 globalActiveAlertsCache[props.id] = props;
+                
+                // Dynamic Severity Matrix Styling
+                let sevColor = "#00ffcc"; 
+                let sevBg = "#161b22";
+                switch(props.severity) {
+                    case "Extreme": sevColor = "#ff00ff"; sevBg = "#260026"; break;
+                    case "Severe": sevColor = "#ff3333"; sevBg = "#260d0d"; break;
+                    case "Moderate": sevColor = "#ff9900"; sevBg = "#261700"; break;
+                    case "Minor": sevColor = "#ffff00"; sevBg = "#262600"; break;
+                    default: sevColor = "#8b949e"; sevBg = "#161b22"; break;
+                }
+
                 html += `
-                    <div class="alert-item" onclick="openAlertDetails('${props.id}')">
-                        <div class="alert-title"><i class="fa-solid fa-triangle-exclamation"></i> ${props.event}</div>
-                        <div style="font-size:0.8rem; color:#8b949e; margin-top:3px;">${props.headline || 'Localized event update.'}</div>
+                    <div class="alert-item" style="border-left: 4px solid ${sevColor}; background: ${sevBg};" onclick="openAlertDetails('${props.id}')">
+                        <div class="alert-title" style="color:${sevColor};"><i class="fa-solid fa-triangle-exclamation"></i> [${props.severity.toUpperCase()}] ${props.event}</div>
+                        <div style="font-size:0.8rem; color:#c9d1d9; margin-top:3px;">${props.headline || 'Localized event update.'}</div>
                     </div>`;
             });
             container.html(html);
@@ -272,7 +320,7 @@ function fetchAirQualityData() {
                 data.forEach(p => {
                     const profile = getAQIColorSpecs(p.AQI);
                     html += `
-                        <div class="aqi-block-metric">
+                        <div class="aqi-block-metric" onclick="openFloatingModal('${p.ParameterName} DETAILS', '<h3 style=\\'color:${profile.color}\\'>Current Index: ${p.AQI} (${profile.label})</h3><p>Ensure local sensor telemetry remains uncompromised.</p>')">
                             <div style="font-size:0.7rem; color:#8b949e; font-weight:bold; letter-spacing:1px;">${p.ParameterName} POLLUTANT</div>
                             <div class="aqi-score-callout" style="color:${profile.color}">${p.AQI}</div>
                             <span class="aqi-pill-badge" style="background-color:${profile.color}">${profile.label}</span>
@@ -304,7 +352,6 @@ function fetchNOAATides() {
         fetch(`${baseUrl}&product=air_temperature`).then(r => r.json())
     ]).then(([wlMllw, wlNavd, predsMllw, airTemp]) => {
         
-        // Extracting latest available array indices for the gauge metrics
         const latestWlMllw = wlMllw.data ? wlMllw.data[wlMllw.data.length - 1] : null;
         const latestWlNavd = wlNavd.data ? wlNavd.data[wlNavd.data.length - 1] : null;
         const latestAirTemp = airTemp.data ? airTemp.data[airTemp.data.length - 1] : null;
@@ -316,7 +363,6 @@ function fetchNOAATides() {
 
         $('#noaa-gauges').html(gaugeHtml || '<span style="color:#ff5555;">NOAA FEED TIMEOUT</span>');
 
-        // Extracting the full arrays for the Chart.js dataset
         const labels = wlMllw.data ? wlMllw.data.map(d => {
             const timeParts = d.t.split(' ')[1].split(':');
             return `${timeParts[0]}:${timeParts[1]}`;
@@ -327,7 +373,6 @@ function fetchNOAATides() {
         const ctx = document.getElementById('noaaChart').getContext('2d');
         if(noaaChartInstance) noaaChartInstance.destroy();
         
-        // Define global charting visual defaults to match the dashboard aesthetic
         Chart.defaults.color = '#8b949e';
         Chart.defaults.font.family = "'Share Tech Mono', monospace";
         
@@ -336,43 +381,11 @@ function fetchNOAATides() {
             data: {
                 labels: labels,
                 datasets: [
-                    {
-                        label: 'Observed (MLLW) ft',
-                        data: dataMllw,
-                        borderColor: '#00ffcc',
-                        backgroundColor: 'rgba(0, 255, 204, 0.1)',
-                        borderWidth: 2,
-                        pointRadius: 0,
-                        fill: true,
-                        tension: 0.4
-                    },
-                    {
-                        label: 'Predicted (MLLW) ft',
-                        data: dataPreds.slice(0, labels.length),
-                        borderColor: '#ff5555',
-                        borderDash: [4, 4],
-                        borderWidth: 2,
-                        pointRadius: 0,
-                        fill: false,
-                        tension: 0.4
-                    }
+                    { label: 'Observed (MLLW) ft', data: dataMllw, borderColor: '#00ffcc', backgroundColor: 'rgba(0, 255, 204, 0.1)', borderWidth: 2, pointRadius: 0, fill: true, tension: 0.4 },
+                    { label: 'Predicted (MLLW) ft', data: dataPreds.slice(0, labels.length), borderColor: '#ff5555', borderDash: [4, 4], borderWidth: 2, pointRadius: 0, fill: false, tension: 0.4 }
                 ]
             },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                interaction: {
-                    intersect: false,
-                    mode: 'index',
-                },
-                plugins: {
-                    legend: { display: true, position: 'top', labels: { boxWidth: 12, usePointStyle: true } }
-                },
-                scales: {
-                    x: { ticks: { maxTicksLimit: 6 }, grid: { color: '#21262d' } },
-                    y: { grid: { color: '#21262d' } }
-                }
-            }
+            options: { responsive: true, maintainAspectRatio: false, interaction: { intersect: false, mode: 'index' }, plugins: { legend: { display: true, position: 'top', labels: { boxWidth: 12, usePointStyle: true } } }, scales: { x: { ticks: { maxTicksLimit: 6 }, grid: { color: '#21262d' } }, y: { grid: { color: '#21262d' } } } }
         });
 
     }).catch(err => {
@@ -414,7 +427,7 @@ function closeFloatingModal() {
     document.getElementById('modalBody').innerHTML = ''; 
 }
 
-// Global Core Sync Timer
+// Global Core Sync Timer (Triggers exactly every 120s / 2 Minutes)
 setInterval(() => {
     countdownVal--;
     if(countdownVal <= 0) {
