@@ -15,6 +15,7 @@ const schuylkillGauges = [
 
 let globalForecastDataCache = null;
 let globalActiveAlertsCache = {};
+let noaaChartInstance = null;
 
 // Layout configuration
 const config = {
@@ -43,7 +44,8 @@ const config = {
                 width: 30,
                 content: [
                     { type: 'component', componentName: 'cloudMap', title: 'WINDY DYNAMIC TRACKING & ARRAYS' },
-                    { type: 'component', componentName: 'airQualityPanel', title: 'REGIONAL AIR QUALITY MATRIX (AIRNOW LIVE)' }
+                    { type: 'component', componentName: 'airQualityPanel', title: 'REGIONAL AIR QUALITY MATRIX (AIRNOW LIVE)' },
+                    { type: 'component', componentName: 'noaaTides', title: 'NOAA TIDES & CURRENTS (STATION 8545240)' }
                 ]
             }
         ]
@@ -141,6 +143,20 @@ layout.registerComponent('nwsAlerts', function(container) {
 layout.registerComponent('airQualityPanel', function(container) {
     container.getElement().html(`<div class="weather-component" id="aqi-container-target">Interrogating AirNow sensor frames...</div>`);
     container.on('open', fetchAirQualityData);
+});
+
+layout.registerComponent('noaaTides', function(container) {
+    container.getElement().html(`
+        <div class="weather-component" style="display:flex; flex-direction:column; gap:10px;">
+            <div id="noaa-gauges" class="aqi-panel-wrap" style="margin-bottom: 5px;">
+                <span style="color:#8b949e; font-size:0.8rem;"><i class="fa-solid fa-satellite-dish"></i> Contacting NOAA sensors...</span>
+            </div>
+            <div style="flex-grow:1; min-height:180px; position:relative; background:#161b22; border: 1px solid #30363d; border-radius:4px; padding:10px;">
+                <canvas id="noaaChart"></canvas>
+            </div>
+        </div>
+    `);
+    container.on('open', fetchNOAATides);
 });
 
 layout.registerComponent('hydrologyFeed', function(container) {
@@ -272,6 +288,99 @@ function fetchAirQualityData() {
         });
 }
 
+function fetchNOAATides() {
+    const station = '8545240'; 
+    const timeZone = 'lst_ldt'; 
+    const units = 'english';
+    const format = 'json';
+    const date = 'today'; 
+
+    const baseUrl = `https://api.tidesandcurrents.noaa.gov/api/prod/datagetter?station=${station}&time_zone=${timeZone}&units=${units}&format=${format}&date=${date}`;
+
+    Promise.all([
+        fetch(`${baseUrl}&product=water_level&datum=MLLW`).then(r => r.json()),
+        fetch(`${baseUrl}&product=water_level&datum=NAVD`).then(r => r.json()),
+        fetch(`${baseUrl}&product=predictions&datum=MLLW`).then(r => r.json()),
+        fetch(`${baseUrl}&product=air_temperature`).then(r => r.json())
+    ]).then(([wlMllw, wlNavd, predsMllw, airTemp]) => {
+        
+        // Extracting latest available array indices for the gauge metrics
+        const latestWlMllw = wlMllw.data ? wlMllw.data[wlMllw.data.length - 1] : null;
+        const latestWlNavd = wlNavd.data ? wlNavd.data[wlNavd.data.length - 1] : null;
+        const latestAirTemp = airTemp.data ? airTemp.data[airTemp.data.length - 1] : null;
+
+        let gaugeHtml = '';
+        if (latestWlMllw) gaugeHtml += `<div class="aqi-block-metric" style="padding:6px;"><div style="font-size:0.65rem; color:#8b949e; font-weight:bold;">WATER LVL (MLLW)</div><div class="aqi-score-callout" style="color:#00ffcc; font-size:1.3rem;">${latestWlMllw.v} ft</div></div>`;
+        if (latestWlNavd) gaugeHtml += `<div class="aqi-block-metric" style="padding:6px;"><div style="font-size:0.65rem; color:#8b949e; font-weight:bold;">WATER LVL (NAVD)</div><div class="aqi-score-callout" style="color:#00ccff; font-size:1.3rem;">${latestWlNavd.v} ft</div></div>`;
+        if (latestAirTemp) gaugeHtml += `<div class="aqi-block-metric" style="padding:6px;"><div style="font-size:0.65rem; color:#8b949e; font-weight:bold;">AIR TEMP</div><div class="aqi-score-callout" style="color:#ff9900; font-size:1.3rem;">${latestAirTemp.v}°F</div></div>`;
+
+        $('#noaa-gauges').html(gaugeHtml || '<span style="color:#ff5555;">NOAA FEED TIMEOUT</span>');
+
+        // Extracting the full arrays for the Chart.js dataset
+        const labels = wlMllw.data ? wlMllw.data.map(d => {
+            const timeParts = d.t.split(' ')[1].split(':');
+            return `${timeParts[0]}:${timeParts[1]}`;
+        }) : [];
+        const dataMllw = wlMllw.data ? wlMllw.data.map(d => parseFloat(d.v)) : [];
+        const dataPreds = predsMllw.predictions ? predsMllw.predictions.map(d => parseFloat(d.v)) : [];
+
+        const ctx = document.getElementById('noaaChart').getContext('2d');
+        if(noaaChartInstance) noaaChartInstance.destroy();
+        
+        // Define global charting visual defaults to match the dashboard aesthetic
+        Chart.defaults.color = '#8b949e';
+        Chart.defaults.font.family = "'Share Tech Mono', monospace";
+        
+        noaaChartInstance = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: labels,
+                datasets: [
+                    {
+                        label: 'Observed (MLLW) ft',
+                        data: dataMllw,
+                        borderColor: '#00ffcc',
+                        backgroundColor: 'rgba(0, 255, 204, 0.1)',
+                        borderWidth: 2,
+                        pointRadius: 0,
+                        fill: true,
+                        tension: 0.4
+                    },
+                    {
+                        label: 'Predicted (MLLW) ft',
+                        data: dataPreds.slice(0, labels.length),
+                        borderColor: '#ff5555',
+                        borderDash: [4, 4],
+                        borderWidth: 2,
+                        pointRadius: 0,
+                        fill: false,
+                        tension: 0.4
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                interaction: {
+                    intersect: false,
+                    mode: 'index',
+                },
+                plugins: {
+                    legend: { display: true, position: 'top', labels: { boxWidth: 12, usePointStyle: true } }
+                },
+                scales: {
+                    x: { ticks: { maxTicksLimit: 6 }, grid: { color: '#21262d' } },
+                    y: { grid: { color: '#21262d' } }
+                }
+            }
+        });
+
+    }).catch(err => {
+        console.error("NOAA API Error:", err);
+        $('#noaa-gauges').html('<span style="color:#ff5555; font-size:0.8rem;"><i class="fa-solid fa-triangle-exclamation"></i> NOAA FEED TIMEOUT</span>');
+    });
+}
+
 function fetchSchuylkillHydrology() {
     let html = '<h3 style="margin-top:0; color:#00ffcc; letter-spacing:1px; font-size:0.9rem;">HYDRO-CORRIDOR BASIN STREAMFLOW MANAGEMENT</h3>';
     schuylkillGauges.forEach(g => {
@@ -313,6 +422,7 @@ setInterval(() => {
         fetchNWSForecast();
         fetchNWSAlerts();
         fetchAirQualityData();
+        fetchNOAATides();
         fetchSchuylkillHydrology();
     }
     const targetTimer = document.getElementById('countdown');
