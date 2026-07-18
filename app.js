@@ -42,7 +42,7 @@ const config = {
                 type: 'column',
                 width: 30,
                 content: [
-                    { type: 'component', componentName: 'lightningGrid', title: 'REALTIME LIGHTNING DETECTION ARRAY (30 MI RADIUS)' },
+                    { type: 'component', componentName: 'cloudMap', title: 'WINDY DYNAMIC TRACKING & ARRAYS' },
                     { type: 'component', componentName: 'airQualityPanel', title: 'REGIONAL AIR QUALITY MATRIX (AIRNOW LIVE)' }
                 ]
             }
@@ -86,6 +86,45 @@ layout.registerComponent('radarMap', function(container) {
     }, 200);
 });
 
+layout.registerComponent('cloudMap', function(container) {
+    container.getElement().html(`
+        <div style="position:relative; width:100%; height:100%; background:#0d1117;">
+            <div style="position:absolute; top:15px; right:15px; z-index:999;">
+                <select id="windyCloudLayerSelect" style="background: rgba(33, 38, 45, 0.9); color: #00ffcc; border: 1px solid #00ffcc; padding: 6px 10px; font-family: 'Share Tech Mono', monospace; font-size: 0.85rem; border-radius: 4px; cursor: pointer; box-shadow: 0 0 15px rgba(0,255,204,0.3); outline: none;">
+                    <option value="radar">Weather Radar</option>
+                    <option value="satellite">Satellite</option>
+                    <option value="wind">Wind</option>
+                    <option value="rain">Rain</option>
+                    <option value="thunder">Thunderstorms</option>
+                    <option value="temp">Temperature</option>
+                    <option value="clouds" selected>Clouds</option>
+                    <option value="highclouds">High Clouds</option>
+                    <option value="mediumclouds">Medium Clouds</option>
+                    <option value="lowclouds">Low Clouds</option>
+                    <option value="fog">Fog</option>
+                    <option value="cloudtop">Cloud Tops</option>
+                    <option value="cloudbase">Cloud Base</option>
+                    <option value="waves">Waves</option>
+                    <option value="thermals">Thermals</option>
+                    <option value="cape">CAPE Index</option>
+                </select>
+            </div>
+            <iframe id="windyCloudIframe" src="https://embed.windy.com/embed.html?type=map&location=coordinates&metricRain=in&metricTemp=f&metricWind=mph&zoom=8&overlay=clouds&product=gfs&level=surface&lat=${localLat}&lon=${localLon}&message=true" style="width:100%; height:100%; border:none;"></iframe>
+        </div>
+    `);
+    
+    setTimeout(() => {
+        const select = container.getElement().find('#windyCloudLayerSelect');
+        const iframe = container.getElement().find('#windyCloudIframe')[0];
+        
+        select.on('change', function() {
+            const layer = this.value;
+            const product = (layer === 'radar' || layer === 'satellite') ? layer : 'gfs';
+            iframe.src = `https://embed.windy.com/embed.html?type=map&location=coordinates&metricRain=in&metricTemp=f&metricWind=mph&zoom=8&overlay=${layer}&product=${product}&level=surface&lat=${localLat}&lon=${localLon}&message=true`;
+        });
+    }, 200);
+});
+
 layout.registerComponent('localForecast', function(container) {
     container.getElement().html(`<div class="weather-component" id="forecast-container">Connecting to synoptic timeline grids...</div>`);
     container.on('open', fetchNWSForecast);
@@ -107,14 +146,6 @@ layout.registerComponent('airQualityPanel', function(container) {
 layout.registerComponent('hydrologyFeed', function(container) {
     container.getElement().html(`<div class="weather-component" id="hydro-river-list">Interrogating USGS stream vectors...</div>`);
     container.on('open', fetchSchuylkillHydrology);
-});
-
-layout.registerComponent('lightningGrid', function(container) {
-    container.getElement().html(`
-        <div style="width:100%; height:100%; position:relative; background:#0d1117;">
-            <iframe src="https://www.lightningmaps.org/#y=${localLat};x=${localLon};z=10;m=oss;t=3;s=0;o=0;b=;ts=0;" style="width:100%; height:100%; border:none;"></iframe>
-        </div>
-    `);
 });
 
 layout.init();
