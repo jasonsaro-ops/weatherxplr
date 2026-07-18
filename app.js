@@ -2,8 +2,6 @@
 const localLat = 40.0759;
 const localLon = -75.2996;
 let countdownVal = 120;
-let mapObject, radarLayerGroup;
-let lightningMap, lightningLayerGroup; 
 
 const AIRNOW_API_KEY = "E5AFEF36-80F6-4A42-AE38-F3C56E3AEAC4"; 
 
@@ -18,7 +16,7 @@ const schuylkillGauges = [
 let globalForecastDataCache = null;
 let globalActiveAlertsCache = {};
 
-// Layout configuration matching requested styling
+// Layout configuration
 const config = {
     settings: { hasHeaders: true, reorderEnabled: true, showPopoutIcon: false, showMaximiseIcon: true, showCloseIcon: false },
     content: [{
@@ -28,7 +26,7 @@ const config = {
                 type: 'column',
                 width: 40,
                 content: [
-                    { type: 'component', componentName: 'radarMap', title: 'NATIONWIDE WEATHER TRACKER & GEOGRAPHIC ARRAYS' },
+                    { type: 'component', componentName: 'radarMap', title: 'WINDY DYNAMIC RADAR TRACKING & ARRAYS' },
                     { type: 'component', componentName: 'localForecast', title: '7-DAY GEOGRAPHIC SYNOPTIC OUTLOOK (19428)' }
                 ]
             },
@@ -44,7 +42,7 @@ const config = {
                 type: 'column',
                 width: 30,
                 content: [
-                    { type: 'component', componentName: 'lightningGrid', title: 'DYNAMIC LOCAL LIGHTNING DETECTION ARRAY (30 MI RADIUS)' },
+                    { type: 'component', componentName: 'lightningGrid', title: 'REALTIME LIGHTNING DETECTION ARRAY (30 MI RADIUS)' },
                     { type: 'component', componentName: 'airQualityPanel', title: 'REGIONAL AIR QUALITY MATRIX (AIRNOW LIVE)' }
                 ]
             }
@@ -57,24 +55,33 @@ const layout = new GoldenLayout(config, '#desktopLayoutContainer');
 // --- Component Registrations ---
 layout.registerComponent('radarMap', function(container) {
     container.getElement().html(`
-        <div style="position:relative; width:100%; height:100%;">
-            <div class="control-matrix-panel" style="position:absolute; top:10px; left:10px; z-index:999; margin:0;">
-                <label style="cursor:pointer;"><input type="radio" name="weatherModel" value="radar" checked> Doppler Radar</label>
-                <label style="cursor:pointer; margin-left:10px;"><input type="radio" name="weatherModel" value="satellite_ir"> Infra Satellite</label>
+        <div style="position:relative; width:100%; height:100%; background:#0d1117;">
+            <div style="position:absolute; top:15px; right:15px; z-index:999;">
+                <select id="windyLayerSelect" style="background: rgba(33, 38, 45, 0.9); color: #00ffcc; border: 1px solid #00ffcc; padding: 6px 10px; font-family: 'Share Tech Mono', monospace; font-size: 0.85rem; border-radius: 4px; cursor: pointer; box-shadow: 0 0 15px rgba(0,255,204,0.3); outline: none;">
+                    <option value="radar">Weather Radar</option>
+                    <option value="satellite">Satellite</option>
+                    <option value="wind">Wind</option>
+                    <option value="rain">Rain</option>
+                    <option value="thunder">Thunderstorms</option>
+                    <option value="temp">Temperature</option>
+                    <option value="clouds">Clouds</option>
+                    <option value="waves">Waves</option>
+                    <option value="thermals">Thermals</option>
+                    <option value="cape">CAPE Index</option>
+                </select>
             </div>
-            <div id="map" style="width:100%; height:100%;"></div>
+            <iframe id="windyIframe" src="https://embed.windy.com/embed.html?type=map&location=coordinates&metricRain=in&metricTemp=f&metricWind=mph&zoom=8&overlay=radar&product=radar&level=surface&lat=${localLat}&lon=${localLon}&message=true" style="width:100%; height:100%; border:none;"></iframe>
         </div>
     `);
     
     setTimeout(() => {
-        mapObject = L.map('map', {zoomControl: false}).setView([localLat, localLon], 8);
-        L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png').addTo(mapObject);
-        radarLayerGroup = L.layerGroup().addTo(mapObject);
+        const select = container.getElement().find('#windyLayerSelect');
+        const iframe = container.getElement().find('#windyIframe')[0];
         
-        updateWeatherOverlay('radar');
-        
-        container.getElement().find('input[name="weatherModel"]').on('change', function() {
-            updateWeatherOverlay(this.value);
+        select.on('change', function() {
+            const layer = this.value;
+            const product = (layer === 'radar' || layer === 'satellite') ? layer : 'gfs';
+            iframe.src = `https://embed.windy.com/embed.html?type=map&location=coordinates&metricRain=in&metricTemp=f&metricWind=mph&zoom=8&overlay=${layer}&product=${product}&level=surface&lat=${localLat}&lon=${localLon}&message=true`;
         });
     }, 200);
 });
@@ -103,65 +110,16 @@ layout.registerComponent('hydrologyFeed', function(container) {
 });
 
 layout.registerComponent('lightningGrid', function(container) {
-    container.getElement().html(`<div id="lightningMapContainer" style="width:100%; height:100%;"></div>`);
-    container.on('shown', () => {
-        if (!lightningMap) {
-            initLightningRadarMap();
-        } else {
-            lightningMap.invalidateSize();
-        }
-    });
+    container.getElement().html(`
+        <div style="width:100%; height:100%; position:relative; background:#0d1117;">
+            <iframe src="https://www.lightningmaps.org/#y=${localLat};x=${localLon};z=10;m=oss;t=3;s=0;o=0;b=;ts=0;" style="width:100%; height:100%; border:none;"></iframe>
+        </div>
+    `);
 });
 
 layout.init();
 
 // --- Logic Implementation ---
-
-function updateWeatherOverlay(modelType) {
-    if(!radarLayerGroup) return;
-    radarLayerGroup.clearLayers();
-    fetch('https://api.rainviewer.com/public/maps.json')
-        .then(res => res.json())
-        .then(data => {
-            const latest = data[data.length - 1];
-            const path = modelType === 'radar' ? '/1/1_1.png' : '/3/1_0.png';
-            L.tileLayer(`https://tilecache.rainviewer.com${latest.path}/256/{z}/{x}/{y}${path}`, {
-                opacity: 0.65
-            }).addTo(radarLayerGroup);
-        }).catch(err => console.error("Radar overlay processing fault:", err));
-}
-
-function initLightningRadarMap() {
-    lightningMap = L.map('lightningMapContainer', { zoomControl: false }).setView([localLat, localLon], 9);
-    L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png').addTo(lightningMap);
-    lightningLayerGroup = L.layerGroup().addTo(lightningMap);
-    
-    L.circleMarker([localLat, localLon], { color: '#ff5555', radius: 5, fillOpacity: 0.9 }).addTo(lightningMap);
-    
-    // 10mi, 20mi, 30mi rings translated to meters
-    [16093.4, 32186.8, 48280.3].forEach(radius => {
-        L.circle([localLat, localLon], { radius, color: '#00ffcc', weight: 1, fill: false, opacity: 0.3, dashArray: '4, 4' }).addTo(lightningMap);
-    });
-
-    generateSimulatedStrikes();
-}
-
-function generateSimulatedStrikes() {
-    if (!lightningLayerGroup) return;
-    lightningLayerGroup.clearLayers();
-    
-    // Spawns occasional lightning vectors to populate matrix field elements
-    const strikeCount = Math.floor(Math.random() * 4);
-    for(let i=0; i<strikeCount; i++) {
-        let latOffset = (Math.random() - 0.5) * 0.4;
-        let lonOffset = (Math.random() - 0.5) * 0.4;
-        let strikeMarker = L.circleMarker([localLat + latOffset, localLon + lonOffset], {
-            color: '#ffcc00', radius: 4, fillColor: '#fff', fillOpacity: 1, weight: 2
-        }).addTo(lightningLayerGroup);
-        strikeMarker.bindPopup(`[LIGHTNING ARREST VEC] Lat: ${(localLat+latOffset).toFixed(4)} Lon: ${(localLon+lonOffset).toFixed(4)}`);
-    }
-    setTimeout(generateSimulatedStrikes, 12000); 
-}
 
 function fetchNWSForecast() {
     fetch(`https://api.weather.gov/points/${localLat},${localLon}`)
@@ -247,7 +205,6 @@ function getAQIColorSpecs(aqiValue) {
 }
 
 function fetchAirQualityData() {
-    // Queries Live AirNow API via Zip Core Loop Arrays
     const zipCode = "19428"; 
     const targetUrl = `https://www.airnowapi.org/aq/observation/zipCode/current/?format=application/json&zipCode=${zipCode}&distance=25&API_KEY=${AIRNOW_API_KEY}`;
     
@@ -317,7 +274,7 @@ function closeFloatingModal() {
     document.getElementById('modalBody').innerHTML = ''; 
 }
 
-// Global Core Sync Timer (Updates matrix array loops every 120 seconds)
+// Global Core Sync Timer
 setInterval(() => {
     countdownVal--;
     if(countdownVal <= 0) {
@@ -326,7 +283,6 @@ setInterval(() => {
         fetchNWSAlerts();
         fetchAirQualityData();
         fetchSchuylkillHydrology();
-        if(mapObject) updateWeatherOverlay(container.getElement().find('input[name="weatherModel"]:checked').val() || 'radar');
     }
     const targetTimer = document.getElementById('countdown');
     if(targetTimer) targetTimer.innerText = countdownVal;
@@ -334,6 +290,4 @@ setInterval(() => {
 
 window.addEventListener('resize', () => { 
     layout.updateSize(); 
-    if (mapObject) mapObject.invalidateSize();
-    if (lightningMap) lightningMap.invalidateSize();
 });
