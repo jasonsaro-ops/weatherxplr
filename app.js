@@ -23,16 +23,10 @@ const mountHollyNWSConfig = {
     ]
 };
 
-// Pennsylvania NWS zones (all zones for statewide coverage)
-const pennsylvaniaZones = [
-    "PAZ001", "PAZ002", "PAZ003", "PAZ004", "PAZ005", "PAZ006", "PAZ007", "PAZ008",
-    "PAZ009", "PAZ010", "PAZ011", "PAZ012", "PAZ013", "PAZ014", "PAZ015", "PAZ016",
-    "PAZ017", "PAZ018", "PAZ019", "PAZ020", "PAZ021", "PAZ022", "PAZ023", "PAZ024",
-    "PAZ025", "PAZ026", "PAZ027", "PAZ028", "PAZ029", "PAZ030", "PAZ031", "PAZ032",
-    "PAZ033", "PAZ034", "PAZ035", "PAZ036", "PAZ037", "PAZ038", "PAZ039", "PAZ040",
-    "PAZ041", "PAZ042", "PAZ043", "PAZ044", "PAZ045", "PAZ046", "PAZ047", "PAZ048",
-    "PAZ049", "PAZ050", "PAZ051", "PAZ052", "PAZ053", "PAZ054", "PAZ055", "PAZ056",
-    "PAZ057", "PAZ058", "PAZ059", "PAZ060", "PAZ061"
+// Pennsylvania state bounds for alerts
+const pennsylvaniaAreas = [
+    // Northwestern PA
+    "PAC001", "PAC003", "PAC005", "PAC007", "PAC009", "PAC011", "PAC013", "PAC015", "PAC017", "PAC019", "PAC021", "PAC023", "PAC025", "PAC027", "PAC029", "PAC031", "PAC033", "PAC035", "PAC037", "PAC039", "PAC041", "PAC043", "PAC045", "PAC047", "PAC049", "PAC051", "PAC053", "PAC055", "PAC057", "PAC059", "PAC061", "PAC063", "PAC065", "PAC067"
 ];
 
 const schuylkillGauges = [
@@ -330,95 +324,91 @@ function openForecastDetails(index) {
 
 function fetchPennsylvaniaAlerts() {
     const container = $('#alerts-container');
-    let allAlerts = [];
     
-    // Fetch NWS alerts from all Pennsylvania zones
-    Promise.all(pennsylvaniaZones.map(zone => 
-        fetch(`https://api.weather.gov/alerts/active?area=${zone}`)
-            .then(res => res.json())
-            .then(data => data.features || [])
-            .catch(err => {
-                console.error(`Error fetching alerts for ${zone}:`, err);
-                return [];
-            })
-    )).then(zoneResults => {
-        // Flatten all results
-        const nwsAlerts = zoneResults.flat();
-        
-        // Fetch SPC alerts
-        return fetch('https://www.spc.noaa.gov/products/outlook/').then(() => {
-            // SPC doesn't have a direct API, so we'll attempt to fetch their text products
+    // Fetch all active alerts in Pennsylvania using NWS API
+    fetch('https://api.weather.gov/alerts/active?point=40.5,-77.5')
+        .then(res => res.json())
+        .then(data => {
+            let nwsAlerts = data.features || [];
+            
+            // Filter for Pennsylvania only (by checking areaDesc)
+            nwsAlerts = nwsAlerts.filter(f => {
+                const areaDesc = f.properties.areaDesc || '';
+                return areaDesc.includes('PA') || areaDesc.includes('Pennsylvania');
+            });
+            
+            console.log(`Found ${nwsAlerts.length} NWS alerts in Pennsylvania`);
+            
+            // Fetch SPC alerts
             return fetchSPCAlerts().then(spcAlerts => ({
                 nws: nwsAlerts,
                 spc: spcAlerts
             }));
-        }).catch(() => ({
-            nws: nwsAlerts,
-            spc: []
-        }));
-    }).then(({ nws, spc }) => {
-        globalPennsylvaniaAlertsCache = {};
-        let html = '';
-        let currentAlertCount = 0;
-        
-        // Display NWS Alerts
-        if (nws.length > 0) {
-            html += `<div style="margin-bottom:10px; padding-bottom:8px; border-bottom:1px solid #30363d;">
-                <div style="font-size:0.75rem; color:#ffcc00; font-weight:bold; margin-bottom:5px;">NWS ALERTS (STATEWIDE)</div>`;
+        })
+        .then(({ nws, spc }) => {
+            globalPennsylvaniaAlertsCache = {};
+            let html = '';
+            let currentAlertCount = 0;
             
-            nws.forEach(f => {
-                const props = f.properties;
-                const alertId = `nws-pa-${props.id}`;
-                globalPennsylvaniaAlertsCache[alertId] = { ...props, source: 'NWS' };
-                currentAlertCount++;
+            // Display NWS Alerts
+            if (nws.length > 0) {
+                html += `<div style="margin-bottom:10px; padding-bottom:8px; border-bottom:1px solid #30363d;">
+                    <div style="font-size:0.75rem; color:#ffcc00; font-weight:bold; margin-bottom:5px;">NWS ALERTS (STATEWIDE) - ${nws.length} ACTIVE</div>`;
                 
-                // Highlight critical events
-                const isCritical = mountHollyNWSConfig.criticalEventTypes.includes(props.event);
-                const alertStyle = isCritical ? 'border-left: 4px solid #ff0000; background: #3d1a1a;' : 'border-left: 4px solid #ff6600; background: #2d2416;';
-                
-                html += `
-                    <div class="alert-item" style="${alertStyle} padding: 8px; margin-bottom: 6px; border-radius: 2px; cursor: pointer; font-size:0.75rem;" onclick="openPennsylvaniaAlertDetails('${alertId}')">
-                        <div style="color: ${isCritical ? '#ff0000' : '#ffaa33'}; font-weight: bold; text-transform: uppercase;">${props.event}</div>
-                        <div style="color:#8b949e; margin-top:2px; font-size:0.7rem;">${props.headline ? props.headline.substring(0, 50) + (props.headline.length > 50 ? '...' : '') : 'Event update.'}</div>
-                    </div>`;
-            });
-            html += `</div>`;
-        }
-        
-        // Display SPC Alerts
-        if (spc.length > 0) {
-            html += `<div style="margin-bottom:10px; padding-bottom:8px; border-bottom:1px solid #30363d;">
-                <div style="font-size:0.75rem; color:#ff9900; font-weight:bold; margin-bottom:5px;">SPC PRODUCTS (STORM PREDICTION CENTER)</div>`;
+                nws.forEach(f => {
+                    const props = f.properties;
+                    const alertId = `nws-pa-${props.id}`;
+                    globalPennsylvaniaAlertsCache[alertId] = { ...props, source: 'NWS' };
+                    currentAlertCount++;
+                    
+                    // Highlight critical events
+                    const isCritical = mountHollyNWSConfig.criticalEventTypes.includes(props.event);
+                    const alertStyle = isCritical ? 'border-left: 4px solid #ff0000; background: #3d1a1a;' : 'border-left: 4px solid #ff6600; background: #2d2416;';
+                    
+                    html += `
+                        <div class="alert-item" style="${alertStyle} padding: 8px; margin-bottom: 6px; border-radius: 2px; cursor: pointer; font-size:0.75rem;" onclick="openPennsylvaniaAlertDetails('${alertId}')">
+                            <div style="color: ${isCritical ? '#ff0000' : '#ffaa33'}; font-weight: bold; text-transform: uppercase;">${props.event}</div>
+                            <div style="color:#8b949e; margin-top:2px; font-size:0.7rem;">${props.areaDesc} | ${props.headline ? props.headline.substring(0, 40) + (props.headline.length > 40 ? '...' : '') : 'Event update.'}</div>
+                        </div>`;
+                });
+                html += `</div>`;
+            }
             
-            spc.forEach(alert => {
-                const alertId = `spc-pa-${alert.id}`;
-                globalSPCAlertsCache[alertId] = alert;
-                currentAlertCount++;
+            // Display SPC Alerts
+            if (spc.length > 0) {
+                html += `<div style="margin-bottom:10px; padding-bottom:8px; border-bottom:1px solid #30363d;">
+                    <div style="font-size:0.75rem; color:#ff9900; font-weight:bold; margin-bottom:5px;">SPC PRODUCTS (STORM PREDICTION CENTER) - ${spc.length}</div>`;
                 
-                html += `
-                    <div class="alert-item" style="border-left: 4px solid #ff9900; background: #2d2416; padding: 8px; margin-bottom: 6px; border-radius: 2px; cursor: pointer; font-size:0.75rem;" onclick="openSPCAlertDetails('${alertId}')">
-                        <div style="color: #ff9900; font-weight: bold; text-transform: uppercase;">${alert.type}</div>
-                        <div style="color:#8b949e; margin-top:2px; font-size:0.7rem;">${alert.headline || alert.description.substring(0, 50) + '...'}</div>
-                    </div>`;
-            });
-            html += `</div>`;
-        }
-        
-        if (nws.length === 0 && spc.length === 0) {
-            html = "<span style='color:#00ff55; font-size:0.8rem;'>✓ SYSTEM CLEAN: NO ACTIVE ALERTS FOR PENNSYLVANIA</span>";
-        }
-        
-        // Play sound if new alerts appeared
-        if (currentAlertCount > previousAlertCount) {
-            playAlertSound();
-        }
-        previousAlertCount = currentAlertCount;
-        
-        container.html(html);
-    }).catch(err => {
-        console.error("Pennsylvania alerts fetch error:", err);
-        container.html(`<span style="color:#ff5555; font-size:0.8rem;"><i class="fa-solid fa-triangle-exclamation"></i> ALERT DATABASE UNREACHABLE</span>`);
-    });
+                spc.forEach(alert => {
+                    const alertId = `spc-pa-${alert.id}`;
+                    globalSPCAlertsCache[alertId] = alert;
+                    currentAlertCount++;
+                    
+                    html += `
+                        <div class="alert-item" style="border-left: 4px solid #ff9900; background: #2d2416; padding: 8px; margin-bottom: 6px; border-radius: 2px; cursor: pointer; font-size:0.75rem;" onclick="openSPCAlertDetails('${alertId}')">
+                            <div style="color: #ff9900; font-weight: bold; text-transform: uppercase;">${alert.type}</div>
+                            <div style="color:#8b949e; margin-top:2px; font-size:0.7rem;">${alert.headline || alert.description.substring(0, 50) + '...'}</div>
+                        </div>`;
+                });
+                html += `</div>`;
+            }
+            
+            if (nws.length === 0 && spc.length === 0) {
+                html = "<span style='color:#00ff55; font-size:0.8rem;'>✓ SYSTEM CLEAN: NO ACTIVE ALERTS FOR PENNSYLVANIA</span>";
+            }
+            
+            // Play sound if new alerts appeared
+            if (currentAlertCount > previousAlertCount) {
+                playAlertSound();
+            }
+            previousAlertCount = currentAlertCount;
+            
+            container.html(html);
+        })
+        .catch(err => {
+            console.error("Pennsylvania alerts fetch error:", err);
+            container.html(`<span style="color:#ff5555; font-size:0.8rem;"><i class="fa-solid fa-triangle-exclamation"></i> ALERT DATABASE UNREACHABLE</span>`);
+        });
 }
 
 function fetchSPCAlerts() {
