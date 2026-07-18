@@ -134,7 +134,7 @@ layout.registerComponent('localForecast', function(container) {
     container.on('open', fetchNWSForecast);
 });
 
-// Unified Component combining NWS Alerts and Mount Holly SPC Convective Risk Matrix Focus
+// Unified Component combining NWS Alerts and SPC Convective Risk Matrix Focus
 layout.registerComponent('hazardsAndRisk', function(container) {
     container.getElement().html(`
         <div class="weather-component" style="display: flex; flex-direction: column; justify-content: space-between; height: 100%;">
@@ -143,8 +143,8 @@ layout.registerComponent('hazardsAndRisk', function(container) {
                 <div id="alerts-container">Interrogating matrix telemetry frames...</div>
             </div>
             <div style="border-top: 1px dashed #30363d; padding-top: 8px; flex-shrink: 0;">
-                <div style="font-size: 0.75rem; color: #8b949e; margin-bottom: 6px; text-transform: uppercase; letter-spacing: 1px;"><i class="fa-solid fa-shield-halved"></i> SPC Convective Outlook (PHI Mount Holly Footprint)</div>
-                <div style="height: 145px; background: url('https://www.spc.noaa.gov/products/outlook/day1otlk_phi_sm.gif') center/contain no-repeat #000; cursor: pointer; border: 1px solid #30363d; border-radius: 4px;" onclick="openFloatingModal('SPC DAY 1 OUTLOOK - MT HOLLY REGION', '<img src=\\'https://www.spc.noaa.gov/products/outlook/day1otlk_phi.gif\\' style=\\'width:100%;\\'>')"></div>
+                <div style="font-size: 0.75rem; color: #8b949e; margin-bottom: 6px; text-transform: uppercase; letter-spacing: 1px;"><i class="fa-solid fa-shield-halved"></i> SPC Convective Outlook (CONUS)</div>
+                <div style="height: 145px; background: url('https://www.spc.noaa.gov/products/outlook/day1otlk_sm.gif') center/contain no-repeat #000; cursor: pointer; border: 1px solid #30363d; border-radius: 4px;" onclick="openFloatingModal('SPC DAY 1 OUTLOOK - NATIONAL CONTEXT', '<img src=\\'https://www.spc.noaa.gov/products/outlook/day1otlk.gif\\' style=\\'width:100%;\\'>')"></div>
             </div>
         </div>`);
     container.on('open', fetchNWSAlerts);
