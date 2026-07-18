@@ -19,7 +19,7 @@ let globalForecastDataCache = null;
 let globalActiveAlertsCache = {};
 let noaaChartInstance = null;
 
-// Layout configuration - Height tracking optimized to compact AQI, restoring second map window
+// Layout configuration
 const config = {
     settings: { hasHeaders: true, reorderEnabled: true, showPopoutIcon: false, showMaximiseIcon: true, showCloseIcon: false },
     content: [{
@@ -37,7 +37,7 @@ const config = {
                 type: 'column',
                 width: 35,
                 content: [
-                    { type: 'component', componentName: 'hazardsAndRisk', title: 'CRITICAL HAZARDS & SPC CONVECTIVE RISK (PHL/SEPA/PHI)', height: 62 },
+                    { type: 'component', componentName: 'hazardsAndRisk', title: 'CRITICAL HAZARDS & SPC CONVECTIVE RISK', height: 62 },
                     { type: 'component', componentName: 'hydrologyFeed', title: 'SCHUYLKILL HYDROLOGY', height: 38 }
                 ]
             },
@@ -61,17 +61,12 @@ layout.registerComponent('radarMap', function(container) {
     container.getElement().html(`
         <div style="position:relative; width:100%; height:100%; background:#0d1117;">
             <div style="position:absolute; top:15px; right:15px; z-index:999;">
-                <select id="windyLayerSelect" style="background: rgba(33, 38, 45, 0.9); color: #00ffcc; border: 1px solid #00ffcc; padding: 6px 10px; font-family: 'Share Tech Mono', monospace; font-size: 0.85rem; border-radius: 4px; cursor: pointer; box-shadow: 0 0 15px rgba(0,255,204,0.3); outline: none;">
+                <select id="windyLayerSelect" style="background: rgba(33, 38, 45, 0.9); color: #00ffcc; border: 1px solid #00ffcc; padding: 6px 10px; font-family: 'Share Tech Mono', monospace; font-size: 0.85rem; border-radius: 4px; cursor: pointer; outline: none;">
                     <option value="radar">Weather Radar</option>
                     <option value="satellite">Satellite</option>
                     <option value="wind">Wind</option>
                     <option value="rain">Rain</option>
                     <option value="thunder">Thunderstorms</option>
-                    <option value="temp">Temperature</option>
-                    <option value="clouds">Clouds</option>
-                    <option value="waves">Waves</option>
-                    <option value="thermals">Thermals</option>
-                    <option value="cape">CAPE Index</option>
                 </select>
             </div>
             <iframe id="windyIframe" src="https://embed.windy.com/embed.html?type=map&location=coordinates&metricRain=in&metricTemp=f&metricWind=mph&zoom=8&overlay=radar&product=radar&level=surface&lat=${localLat}&lon=${localLon}&message=true" style="width:100%; height:100%; border:none;"></iframe>
@@ -94,23 +89,12 @@ layout.registerComponent('cloudMap', function(container) {
     container.getElement().html(`
         <div style="position:relative; width:100%; height:100%; background:#0d1117;">
             <div style="position:absolute; top:15px; right:15px; z-index:999;">
-                <select id="windyCloudLayerSelect" style="background: rgba(33, 38, 45, 0.9); color: #00ffcc; border: 1px solid #00ffcc; padding: 6px 10px; font-family: 'Share Tech Mono', monospace; font-size: 0.85rem; border-radius: 4px; cursor: pointer; box-shadow: 0 0 15px rgba(0,255,204,0.3); outline: none;">
-                    <option value="radar">Weather Radar</option>
-                    <option value="satellite">Satellite</option>
-                    <option value="wind">Wind</option>
-                    <option value="rain">Rain</option>
-                    <option value="thunder">Thunderstorms</option>
-                    <option value="temp">Temperature</option>
+                <select id="windyCloudLayerSelect" style="background: rgba(33, 38, 45, 0.9); color: #00ffcc; border: 1px solid #00ffcc; padding: 6px 10px; font-family: 'Share Tech Mono', monospace; font-size: 0.85rem; border-radius: 4px; cursor: pointer; outline: none;">
                     <option value="clouds" selected>Clouds</option>
                     <option value="highclouds">High Clouds</option>
                     <option value="mediumclouds">Medium Clouds</option>
                     <option value="lowclouds">Low Clouds</option>
                     <option value="fog">Fog</option>
-                    <option value="cloudtop">Cloud Tops</option>
-                    <option value="cloudbase">Cloud Base</option>
-                    <option value="waves">Waves</option>
-                    <option value="thermals">Thermals</option>
-                    <option value="cape">CAPE Index</option>
                 </select>
             </div>
             <iframe id="windyCloudIframe" src="https://embed.windy.com/embed.html?type=map&location=coordinates&metricRain=in&metricTemp=f&metricWind=mph&zoom=8&overlay=clouds&product=gfs&level=surface&lat=${localLat}&lon=${localLon}&message=true" style="width:100%; height:100%; border:none;"></iframe>
@@ -123,8 +107,7 @@ layout.registerComponent('cloudMap', function(container) {
         
         select.on('change', function() {
             const layer = this.value;
-            const product = (layer === 'radar' || layer === 'satellite') ? layer : 'gfs';
-            iframe.src = `https://embed.windy.com/embed.html?type=map&location=coordinates&metricRain=in&metricTemp=f&metricWind=mph&zoom=8&overlay=${layer}&product=${product}&level=surface&lat=${localLat}&lon=${localLon}&message=true`;
+            iframe.src = `https://embed.windy.com/embed.html?type=map&location=coordinates&metricRain=in&metricTemp=f&metricWind=mph&zoom=8&overlay=${layer}&product=gfs&level=surface&lat=${localLat}&lon=${localLon}&message=true`;
         });
     }, 200);
 });
@@ -134,7 +117,7 @@ layout.registerComponent('localForecast', function(container) {
     container.on('open', fetchNWSForecast);
 });
 
-// Unified Component combining NWS Alerts and SPC Convective Risk Matrix Focus
+// Unified Component combining NWS Alerts and SPC Convective Risk
 layout.registerComponent('hazardsAndRisk', function(container) {
     container.getElement().html(`
         <div class="weather-component" style="display: flex; flex-direction: column; justify-content: space-between; height: 100%;">
@@ -142,9 +125,12 @@ layout.registerComponent('hazardsAndRisk', function(container) {
                 <button id="sound-toggle-btn" class="sound-toggle" onclick="toggleSound()"><i class="fa-solid fa-bell-slash"></i> SOUND NOTIFICATIONS: OFF</button>
                 <div id="alerts-container">Interrogating matrix telemetry frames...</div>
             </div>
-            <div style="border-top: 1px dashed #30363d; padding-top: 8px; flex-shrink: 0;">
+            <div style="border-top: 1px dashed #30363d; padding-top: 8px; flex-shrink: 0; background: #0d1117;">
                 <div style="font-size: 0.75rem; color: #8b949e; margin-bottom: 6px; text-transform: uppercase; letter-spacing: 1px;"><i class="fa-solid fa-shield-halved"></i> SPC Convective Outlook (CONUS)</div>
-                <div style="height: 145px; background: url('https://www.spc.noaa.gov/products/outlook/day1otlk_sm.gif') center/contain no-repeat #000; cursor: pointer; border: 1px solid #30363d; border-radius: 4px;" onclick="openFloatingModal('SPC DAY 1 OUTLOOK - NATIONAL CONTEXT', '<img src=\\'https://www.spc.noaa.gov/products/outlook/day1otlk.gif\\' style=\\'width:100%;\\'>')"></div>
+                <div style="height: 145px; cursor: pointer; border: 1px solid #30363d; border-radius: 4px; overflow: hidden; display: flex; align-items: center; justify-content: center; background: #000;" 
+                     onclick="openFloatingModal('SPC DAY 1 OUTLOOK - NATIONAL CONTEXT', '<img src=\\'https://www.spc.noaa.gov/products/outlook/day1otlk.gif?t=${Date.now()}\\' style=\\'width:100%;\\'>')">
+                     <img src="https://www.spc.noaa.gov/products/outlook/day1otlk_sm.gif?t=${Date.now()}" style="height: 100%; width: 100%; object-fit: contain;">
+                </div>
             </div>
         </div>`);
     container.on('open', fetchNWSAlerts);
@@ -231,12 +217,20 @@ function openForecastDetails(index) {
 }
 
 function fetchNWSAlerts() {
-    // PAZ071: Phila, PAZ070: Delaware, PAZ106: Montgomery, PAZ105: Bucks, PAZ101: Chester
-    fetch(`https://api.weather.gov/alerts/active?zone=PAZ071,PAZ070,PAZ106,PAZ105,PAZ101`)
-        .then(res => res.json())
+    // Broadened query to all of Pennsylvania (area=PA) to ensure alerts propagate to the dashboard
+    fetch(`https://api.weather.gov/alerts/active?area=PA`, {
+        headers: { 'Accept': 'application/geo+json' }
+    })
+        .then(res => {
+            if (!res.ok) throw new Error("NWS API Error");
+            return res.json();
+        })
         .then(data => {
             const container = $('#alerts-container');
-            if (!data.features) return;
+            if (!data.features || data.features.length === 0) {
+                container.html("<div style='padding: 10px; border: 1px solid #00ff55; background: rgba(0,255,85,0.1); border-radius: 4px; color:#00ff55; font-size:0.85rem;'>✓ SYSTEM CLEAN: NO ACTIVE HAZARD WARNINGS FOR PA</div>");
+                return;
+            }
 
             const currentAlertIds = data.features.map(f => f.properties.id);
             const hasNewAlerts = currentAlertIds.some(id => !previousAlertIds.includes(id));
@@ -246,13 +240,13 @@ function fetchNWSAlerts() {
             }
             previousAlertIds = currentAlertIds;
 
-            if (data.features.length === 0) {
-                container.html("<span style='color:#00ff55; font-size:0.85rem;'>✓ SYSTEM CLEAN: NO ACTIVE HAZARD WARNINGS FOR PHL / SEPA</span>");
-                return;
-            }
             let html = "";
             globalActiveAlertsCache = {};
-            data.features.forEach(f => {
+            
+            // Limit to top 15 alerts to prevent UI lag if the state is overwhelmed
+            const displayFeatures = data.features.slice(0, 15);
+            
+            displayFeatures.forEach(f => {
                 const props = f.properties;
                 globalActiveAlertsCache[props.id] = props;
                 
@@ -269,11 +263,14 @@ function fetchNWSAlerts() {
                 html += `
                     <div class="alert-item" style="border-left: 4px solid ${sevColor}; background: ${sevBg};" onclick="openAlertDetails('${props.id}')">
                         <div class="alert-title" style="color:${sevColor};"><i class="fa-solid fa-triangle-exclamation"></i> [${props.severity.toUpperCase()}] ${props.event}</div>
-                        <div style="font-size:0.8rem; color:#c9d1d9; margin-top:3px;">${props.headline || 'Localized event update.'}</div>
+                        <div style="font-size:0.8rem; color:#c9d1d9; margin-top:3px;">${props.headline || props.areaDesc}</div>
                     </div>`;
             });
             container.html(html);
-        }).catch(err => console.error("Hazards trace link breakdown:", err));
+        }).catch(err => {
+            console.error("Hazards trace link breakdown:", err);
+            $('#alerts-container').html("<div style='padding: 10px; border: 1px solid #ff5555; background: rgba(255,85,85,0.1); border-radius: 4px; color:#ff5555; font-size:0.85rem;'>! NWS TELEMETRY TIMEOUT - UNABLE TO FETCH ALERTS</div>");
+        });
 }
 
 function openAlertDetails(id) {
