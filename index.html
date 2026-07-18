@@ -3,16 +3,15 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>WEATHEREXPLR // CROSS-SYNOPTIC ARRAY</title>
+    <title>WEATHERXPLR // CROSS-SYNOPTIC ARRAY</title>
+    <!-- Deployment Target: https://github.com/jasonsaro-ops/weatherxplr -->
+    
     <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     
     <!-- Golden Layout Stylesheets -->
     <link type="text/css" rel="stylesheet" href="https://cdn.jsdelivr.net/npm/golden-layout@1.5.9/src/css/goldenlayout-base.css" />
     <link type="text/css" rel="stylesheet" href="https://cdn.jsdelivr.net/npm/golden-layout@1.5.9/src/css/goldenlayout-dark-theme.css" />
-    
-    <!-- Leaflet Map Stylesheets -->
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
 
     <style>
         body, html {
@@ -71,21 +70,6 @@
             display: flex;
             gap: 10px;
             align-items: center;
-        }
-        .matrix-btn {
-            background: #21262d;
-            border: 1px solid #30363d;
-            color: #8b949e;
-            padding: 4px 10px;
-            border-radius: 3px;
-            cursor: pointer;
-            font-family: 'Share Tech Mono', monospace;
-            font-size: 0.75rem;
-        }
-        .matrix-btn:hover, .matrix-btn.active {
-            border-color: #00ffcc;
-            color: #00ffcc;
-            background: rgba(0,255,204,0.1);
         }
         .alert-item {
             border-left: 4px solid #ff3333;
@@ -204,9 +188,6 @@
         .hub-modal-close:hover { color: #ff5555; }
         .hub-modal-body { padding: 20px; overflow-y: auto; color: #fff; }
 
-        /* Map UI overrides */
-        .leaflet-container { background: #0d1117 !important; }
-
         /* Golden Layout Style Customizations */
         .lm_header { background: #161b22 !important; }
         .lm_tab { background: #21262d !important; color: #8b949e !important; font-family: 'Share Tech Mono', monospace !important; border: 1px solid #30363d !important;}
@@ -217,7 +198,7 @@
 <body>
 
     <div id="header-bar">
-        <div class="title"><i class="fa-solid fa-satellite"></i> WEATHEREXPLR // CROSS-SYNOPTIC CONTROL ARRAY</div>
+        <div class="title"><i class="fa-solid fa-satellite"></i> WEATHERXPLR // CROSS-SYNOPTIC CONTROL ARRAY</div>
         <div class="timer-badge">CYCLE REMAINING: <span id="countdown">120</span>s</div>
     </div>
 
@@ -235,7 +216,6 @@
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.7.1/jquery.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/golden-layout@1.5.9/dist/goldenlayout.min.js"></script>
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
     
     <!-- External Logic File Link -->
     <script src="app.js"></script>
