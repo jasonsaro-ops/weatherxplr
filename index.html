@@ -34,24 +34,24 @@
 .chip.live{border-color:var(--green);color:var(--green)}.chip.alert{border-color:var(--red);color:var(--red);background:rgba(239,68,68,.1)}
 .chip.btn{cursor:pointer}.chip.btn:hover{border-color:var(--cyan);color:var(--cyan)}.chip.on{border-color:var(--green);color:var(--green)}
 .clock{font-family:var(--font-mono);font-size:12px;color:var(--amber)}.top-right{display:flex;align-items:center;gap:6px}
-.main{display:grid;grid-template-columns:240px 1fr 220px;min-height:0;overflow:hidden}
+.main{display:grid;grid-template-columns:220px 1fr 200px;min-height:0;overflow:hidden}
 .rail{background:var(--panel);border-right:1px solid var(--line);display:flex;flex-direction:column;min-height:0;overflow:hidden}
 .rail.right{border-right:none;border-left:1px solid var(--line)}
-.seg{display:flex;padding:6px;gap:4px;border-bottom:1px solid var(--line);flex-shrink:0}
-.seg button{flex:1;padding:6px 2px;border:1px solid var(--line);background:var(--raise);color:var(--text-mid);border-radius:4px;font-size:9px;font-weight:600;letter-spacing:.02em;cursor:pointer;text-transform:uppercase}
+.seg{display:flex;padding:4px;gap:3px;border-bottom:1px solid var(--line);flex-shrink:0}
+.seg button{flex:1;padding:4px 2px;border:1px solid var(--line);background:var(--raise);color:var(--text-mid);border-radius:4px;font-size:8px;font-weight:600;letter-spacing:.02em;cursor:pointer;text-transform:uppercase}
 .seg button.on{background:var(--cyan);color:#0a0c10;border-color:var(--cyan)}
-.rail-body{flex:1;overflow-y:auto;overflow-x:hidden;padding:6px;min-height:0}.pane{display:none}.pane.on{display:block}
-.card{background:var(--raise);border:1px solid var(--line);border-radius:var(--r);padding:8px;margin-bottom:8px;cursor:pointer;transition:border-color .12s}
-.card:hover{border-color:var(--cyan)}.card-hd{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px}
-.card-title{font-size:10px;font-family:var(--font-mono);letter-spacing:.08em;text-transform:uppercase;color:var(--text-dim)}
-.card-val{font-family:var(--font-mono);font-size:22px;font-weight:600;line-height:1.1}.card-unit{font-size:11px;color:var(--text-mid);font-weight:400}
-.card-sub{font-size:10px;color:var(--text-dim);margin-top:2px}
-.gauge-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px}
-.g-tile{background:var(--bg);border:1px solid var(--line);border-radius:4px;padding:6px 4px;text-align:center;cursor:pointer}
+.rail-body{flex:1;overflow-y:auto;overflow-x:hidden;padding:4px 5px;min-height:0}.pane{display:none}.pane.on{display:block}
+.card{background:var(--raise);border:1px solid var(--line);border-radius:var(--r);padding:5px 6px;margin-bottom:5px;cursor:pointer;transition:border-color .12s}
+.card:hover{border-color:var(--cyan)}.card-hd{display:flex;justify-content:space-between;align-items:center;margin-bottom:3px}
+.card-title{font-size:9px;font-family:var(--font-mono);letter-spacing:.06em;text-transform:uppercase;color:var(--text-dim)}
+.card-val{font-family:var(--font-mono);font-size:20px;font-weight:600;line-height:1.05}.card-unit{font-size:10px;color:var(--text-mid);font-weight:400}
+.card-sub{font-size:9px;color:var(--text-dim);margin-top:1px}
+.gauge-grid{display:grid;grid-template-columns:1fr 1fr;gap:4px}
+.g-tile{background:var(--bg);border:1px solid var(--line);border-radius:4px;padding:4px 3px;text-align:center;cursor:pointer}
 .g-tile:hover{border-color:var(--cyan)}.g-tile .lbl{font-size:8px;font-family:var(--font-mono);letter-spacing:.08em;text-transform:uppercase;color:var(--text-dim)}
 .g-tile svg{width:100%;max-width:90px;height:auto;display:block;margin:2px auto 0}
-.metric-row{display:flex;justify-content:space-between;align-items:center;padding:5px 0;border-bottom:1px solid var(--line)}
-.metric-row:last-child{border-bottom:none}.metric-row .k{font-size:10px;color:var(--text-dim)}.metric-row .v{font-family:var(--font-mono);font-weight:600;font-size:12px}
+.metric-row{display:flex;justify-content:space-between;align-items:center;padding:3px 0;border-bottom:1px solid var(--line)}
+.metric-row:last-child{border-bottom:none}.metric-row .k{font-size:9px;color:var(--text-dim)}.metric-row .v{font-family:var(--font-mono);font-weight:600;font-size:11px}
 .alert-item,.alert-row{border-left:4px solid var(--text-dim);background:var(--raise);padding:8px 10px;margin-bottom:6px;border-radius:0 var(--r) var(--r) 0;cursor:pointer;transition:filter .15s,border-color .15s}
 .alert-item:hover,.alert-row:hover{filter:brightness(1.12)}
 .alert-item.sev-extreme,.alert-row.sev-extreme{border-left-color:var(--sev-extreme);background:linear-gradient(90deg,#3a1418 0%,var(--raise) 70%)}
@@ -92,7 +92,7 @@
 .fc-table th{text-align:left;padding:4px 3px;color:var(--text-dim);font-weight:500;border-bottom:1px solid var(--line)}
 .fc-table td{padding:4px 3px;border-bottom:1px solid var(--line);font-family:var(--font-mono)}.fc-table tr{cursor:pointer}.fc-table tr:hover td{background:var(--raise2)}
 .hi{color:var(--orange)}.lo{color:var(--cyan2)}
-.spark{height:48px;margin:4px 0 8px;background:var(--bg);border:1px solid var(--line);border-radius:4px;padding:4px;cursor:pointer}.spark:hover{border-color:var(--cyan)}.spark.tall{height:80px}
+.spark{height:36px;margin:2px 0 4px;background:var(--bg);border:1px solid var(--line);border-radius:4px;padding:2px;cursor:pointer}.spark:hover{border-color:var(--cyan)}.spark.tall{height:44px}
 .model-panel{background:var(--raise);border:1px solid var(--line);border-radius:var(--r);padding:8px;margin-bottom:8px}
 .model-panel h3{font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--text-dim);margin-bottom:6px}
 .model-grid{display:grid;grid-template-columns:1fr 1fr;gap:4px}
@@ -118,10 +118,12 @@
 .nudge .blank{visibility:hidden}
 
 
-.rail.right .rail-body{overflow:hidden;padding:4px 6px;display:flex;flex-direction:column;gap:4px}
-.rail.right .card{padding:6px 8px;margin:0}
-.rail.right .card-title{font-size:9px;margin-bottom:2px}
-.rail.right .card-val{font-size:18px}
+.rail.right .rail-body{overflow:hidden;padding:3px 5px;display:flex;flex-direction:column;gap:3px}
+.rail.right .card{padding:4px 6px;margin:0}
+.rail.right .card-title{font-size:8px;margin-bottom:1px}
+.rail.right .card-val{font-size:16px}
+.rail.right .spark{height:32px;margin:1px 0 2px}
+.rail.right .spark.tall{height:36px}
 .rail.right .spark{height:48px}
 .rail.right .spark.tall{height:52px}
 .rail.right .fc-table{font-size:10px}
@@ -155,6 +157,14 @@
 .hydro-compact .obs-row .nm{font-size:8px;opacity:.75}
 .hydro-compact .obs-row .tv{font-size:8px}
 .rail.right .rail-body{display:flex;flex-direction:column;min-height:0;overflow:hidden}
+/* Left rail: keep sample point compact so AQI bottom is never clipped */
+.rail .pane.on{display:flex;flex-direction:column;min-height:0}
+.rail .card:first-child{padding:4px 6px;margin-bottom:4px}
+.rail .card:first-child .card-hd{margin-bottom:1px}
+.rail .card:first-child .card-sub{font-size:8px;line-height:1.2}
+.rail .aqi-bar-wrap{margin-top:3px}
+.rail .aqi-bar{height:8px}
+.rail .spark.tall{height:40px}
 #brand-home:hover{opacity:.85}.brand-mark{box-shadow:0 0 10px rgba(59,158,255,.45)}
 .vc-form{display:flex;flex-direction:column;gap:6px}
 .vc-form label{font-size:8px;color:var(--text-dim);text-transform:uppercase;letter-spacing:.06em}
@@ -191,7 +201,7 @@
 .aqi-bar i{display:none}
 .aqi-needle{position:absolute;top:-3px;width:3px;height:16px;background:#fff;border-radius:2px;box-shadow:0 0 4px #000;transform:translateX(-50%)}
 .aqi-bar-lbl{display:flex;justify-content:space-between;font-size:8px;color:var(--text-dim);margin-top:2px;font-family:var(--font-mono)}
-.spark.tall{height:72px;position:relative}
+.spark.tall{height:44px;position:relative}
 
 </style>
 </head>
@@ -205,14 +215,15 @@
 </header>
 <div class="main">
 <aside class="rail">
-  <div class="rail-body" style="padding-top:8px">
+  <div class="rail-body" style="padding-top:4px">
     <div class="pane on" id="pane-cond">
-      <div class="card" style="cursor:pointer" onclick="openSamplePoint()"><div class="card-hd"><span class="card-title">Sample point</span><span class="card-sub" id="pt-coords">—</span></div>
-        <div class="card-sub" id="pt-station">Nearest NWS: —</div>
+      <div class="card" style="cursor:pointer;padding:4px 6px;margin-bottom:4px" onclick="openSamplePoint()">
+        <div class="card-hd" style="margin-bottom:1px"><span class="card-title">Sample point</span><span class="card-sub" id="pt-coords">—</span></div>
+        <div class="card-sub" id="pt-station" style="font-size:8px;line-height:1.2">Nearest NWS: —</div>
       </div>
       <div class="card" onclick="openConditions()"><div class="card-hd"><span class="card-title">Temperature</span><span class="card-sub" id="cond-desc">—</span></div><div class="card-val" id="cond-temp">—<span class="card-unit">°F</span></div><div class="card-sub" id="cond-feels">Feels —</div></div>
       <div class="gauge-grid" id="gauge-grid"></div>
-      <div class="card" style="margin-top:8px" onclick="openConditions()">
+      <div class="card" style="margin-top:4px" onclick="openConditions()">
         <div class="metric-row"><span class="k">Wind</span><span class="v" id="m-wind">—</span></div>
         <div class="metric-row"><span class="k">Gusts</span><span class="v" id="m-gust">—</span></div>
         <div class="metric-row"><span class="k">Pressure</span><span class="v" id="m-pres">—</span></div>
@@ -220,21 +231,21 @@
         <div class="metric-row"><span class="k">Clouds</span><span class="v" id="m-cloud">—</span></div>
         <div class="metric-row"><span class="k">Precip</span><span class="v" id="m-precip">—</span></div>
       </div>
-      <div class="card" style="margin-top:8px;cursor:pointer" onclick="openAQI()">
+      <div class="card" style="margin-top:4px;cursor:pointer" onclick="openAQI()">
         <div class="card-hd"><span class="card-title">Air Quality</span><span class="card-sub" id="aqi-cat">—</span></div>
         <div class="card-val" id="aqi-val">—</div>
         <div class="card-sub">US AQI · Open-Meteo</div>
-        <div class="aqi-bar-wrap" style="margin-top:8px">
+        <div class="aqi-bar-wrap" style="margin-top:4px">
           <div class="aqi-bar" id="aqi-bar"><i id="aqi-bar-fill"></i><span class="aqi-needle" id="aqi-needle"></span></div>
           <div class="aqi-bar-lbl"><span>0</span><span>50</span><span>100</span><span>150</span><span>200+</span></div>
         </div>
-        <div class="metric-row" style="margin-top:6px"><span class="k">PM2.5</span><span class="v" id="aqi-pm25">—</span></div>
+        <div class="metric-row" style="margin-top:3px"><span class="k">PM2.5</span><span class="v" id="aqi-pm25">—</span></div>
         <div class="metric-row"><span class="k">PM10</span><span class="v" id="aqi-pm10">—</span></div>
         <div class="metric-row"><span class="k">Ozone</span><span class="v" id="aqi-o3">—</span></div>
-        <div class="card-title" style="margin:8px 0 2px">US AQI · 48h</div>
-        <div class="spark tall"><canvas id="c-aqi" height="72"></canvas></div>
-        <div class="card-title" style="margin:6px 0 2px">PM2.5 µg/m³ · 48h</div>
-        <div class="spark tall"><canvas id="c-pm25" height="56"></canvas></div>
+        <div class="card-title" style="margin:4px 0 1px">US AQI · 48h</div>
+        <div class="spark tall"><canvas id="c-aqi" height="40"></canvas></div>
+        <div class="card-title" style="margin:3px 0 1px">PM2.5 µg/m³ · 48h</div>
+        <div class="spark tall"><canvas id="c-pm25" height="36"></canvas></div>
       </div>
     </div>
   </div>
@@ -273,7 +284,7 @@
             <option value="pm2p5">PM2.5</option>
 </select>
         </div>
-        <iframe id="windy-iframe-1" src="https://embed.windy.com/embed.html?type=map&location=coordinates&metricRain=in&metricTemp=f&metricWind=mph&zoom=8&overlay=radar&product=radar&level=surface&lat=40.0759&lon=-75.2996" allow="fullscreen" allowfullscreen loading="lazy"></iframe>
+        <iframe id="windy-iframe-1" src="https://embed.windy.com/embed.html?type=map&location=coordinates&metricRain=in&metricTemp=f&metricWind=mph&zoom=8&overlay=radar&product=radar&level=surface&lat=40.0759&lon=-75.2996" allow="fullscreen" loading="lazy"></iframe>
       </div>
       <div class="windy-panel windy-right">
         <div class="windy-map">
@@ -307,7 +318,7 @@
             <option value="pm2p5">PM2.5</option>
 </select>
           </div>
-          <iframe id="windy-iframe-2" src="https://embed.windy.com/embed.html?type=map&location=coordinates&metricRain=in&metricTemp=f&metricWind=mph&zoom=8&overlay=wind&product=ecmwf&level=surface&lat=40.0759&lon=-75.2996" allow="fullscreen" allowfullscreen loading="lazy"></iframe>
+          <iframe id="windy-iframe-2" src="https://embed.windy.com/embed.html?type=map&location=coordinates&metricRain=in&metricTemp=f&metricWind=mph&zoom=8&overlay=wind&product=ecmwf&level=surface&lat=40.0759&lon=-75.2996" allow="fullscreen" loading="lazy"></iframe>
         </div>
         <div class="alerts-pane">
           <div class="alerts-pane-hd">
@@ -325,21 +336,21 @@
   <div class="rail-body">
     <div class="card" style="cursor:pointer" onclick="openForecast10()"><div class="card-title" style="margin-bottom:6px">10-Day Outlook</div><table class="fc-table" id="fc-daily"><thead><tr><th>Day</th><th>Hi</th><th>Lo</th><th>PoP</th></tr></thead><tbody></tbody></table></div>
     <div class="card" style="cursor:pointer" onclick="openHourlyDetail()">
-      <div class="card-title" style="margin-bottom:2px">Temperature °F</div>
-      <div class="spark tall"><canvas id="c-temp" height="72"></canvas></div>
-      <div class="card-title" style="margin-bottom:2px">Precip chance %</div>
-      <div class="spark tall"><canvas id="c-pop" height="72"></canvas></div>
-      <div class="card-title" style="margin-bottom:2px">Wind mph</div>
-      <div class="spark tall"><canvas id="c-wind" height="72"></canvas></div>
+      <div class="card-title" style="margin-bottom:1px">Temperature °F</div>
+      <div class="spark tall"><canvas id="c-temp" height="36"></canvas></div>
+      <div class="card-title" style="margin-bottom:1px">Precip chance %</div>
+      <div class="spark tall"><canvas id="c-pop" height="36"></canvas></div>
+      <div class="card-title" style="margin-bottom:1px">Wind mph</div>
+      <div class="spark tall"><canvas id="c-wind" height="36"></canvas></div>
     </div>
     <div class="card" style="cursor:pointer" onclick="openTides()">
       <div class="card-title" style="margin-bottom:6px">NOAA Tides · 8545240</div>
       <div class="metric-row"><span class="k">Tide MLLW</span><span class="v" id="tide-mllw">—</span></div>
       <div class="metric-row"><span class="k">Tide air</span><span class="v" id="tide-air">—</span></div>
     </div>
-    <div class="card" style="cursor:default;flex:1">
-      <div class="card-title" style="cursor:pointer" onclick="openHydroOverview()">Hydrology · USGS Schuylkill</div>
-      <div id="hydro-list"></div>
+    <div class="card hydro-compact" style="cursor:default;flex:1;min-height:0;overflow:hidden;display:flex;flex-direction:column">
+      <div class="card-title" style="cursor:pointer;flex-shrink:0" onclick="openHydroOverview()">Hydrology · USGS Schuylkill</div>
+      <div id="hydro-list" style="flex:1;overflow-y:auto;min-height:0"></div>
     </div>
   </div>
 </aside>
@@ -352,6 +363,6 @@
 </div>
 <div class="modal-bg" id="modal-bg" onclick="if(event.target===this)closeModal()"><div class="modal" id="modal"><div class="modal-hd"><span id="modal-title">Detail</span><span class="modal-x" onclick="closeModal()"><i class="fa-solid fa-xmark"></i></span></div><div class="modal-bd" id="modal-body"></div></div></div>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
-<script src="app.js?v=20261121s"></script>
+<script src="app.js?v=20261121t"></script>
 </body>
 </html>

@@ -20,7 +20,15 @@ const PRESETS={
   ilg:{lat:39.6784,lon:-75.6060,label:"KILG"},
   rdg:{lat:40.3785,lon:-75.9653,label:"KRDG"}
 };
-const GAUGES=[{id:"01472000",name:"Schuylkill @ Reading"},{id:"01473500",name:"Schuylkill @ Pottstown"},{id:"01474500",name:"Schuylkill @ Norriton"},{id:"01474703",name:"Schuylkill @ Conshohocken"},{id:"01474000",name:"Schuylkill @ Fairmount Dam"}];
+// USGS Schuylkill corridor (National Water Dashboard / waterdata.usgs.gov)
+// Conshohocken: USGS-01473730  https://waterdata.usgs.gov/monitoring-location/USGS-01473730/
+const GAUGES=[
+  {id:"01471510",name:"Schuylkill @ Reading"},
+  {id:"01472000",name:"Schuylkill @ Pottstown"},
+  {id:"01473500",name:"Schuylkill @ Norristown"},
+  {id:"01473730",name:"Schuylkill @ Conshohocken"},
+  {id:"01474500",name:"Schuylkill @ Philadelphia"}
+];
 const WMO={0:"Clear",1:"Mainly clear",2:"Partly cloudy",3:"Overcast",45:"Fog",51:"Light drizzle",61:"Light rain",63:"Rain",65:"Heavy rain",71:"Light snow",80:"Showers",95:"Thunderstorm"};
 let cd=CYCLE,audioOn=false,audioCtx=null,alertCache={},obsCache={},aqiCache={},kphlObs=null,afdFull="";
 let prevAlertIds=new Set(),hasBaseline=false,omData=null,charts={};
@@ -185,6 +193,53 @@ window.openSamplePoint=function(){
     <div class="metric-row"><span class="k">CWA</span><span class="v">PHI · Mount Holly</span></div>
     <div style="font-size:11px;color:var(--text-dim);margin-top:8px">${esc(($("pt-station")&&$("pt-station").textContent)||"")}</div>
   `);
+}
+
+/** Mini sparkline via Chart.js (destroys prior instance on same canvas) */
+function sparkChart(canvasId, labels, data, color, unit){
+  const el = $(canvasId);
+  if(!el || typeof Chart === "undefined") return;
+  try{
+    if(charts[canvasId]){ charts[canvasId].destroy(); delete charts[canvasId]; }
+    const vals = (data||[]).map(v => v==null || Number.isNaN(+v) ? null : +v);
+    charts[canvasId] = new Chart(el, {
+      type: "line",
+      data: {
+        labels: labels || [],
+        datasets: [{
+          data: vals,
+          borderColor: color || "#3b9eff",
+          backgroundColor: (color||"#3b9eff") + "22",
+          borderWidth: 1.5,
+          pointRadius: 0,
+          pointHoverRadius: 3,
+          tension: 0.35,
+          fill: true
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        animation: false,
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            callbacks: {
+              label: (ctx) => {
+                const v = ctx.parsed.y;
+                return v==null ? "—" : (Math.round(v*10)/10) + (unit ? " " + unit : "");
+              }
+            }
+          }
+        },
+        scales: {
+          x: { display: false },
+          y: { display: false, beginAtZero: false }
+        },
+        interaction: { mode: "index", intersect: false }
+      }
+    });
+  }catch(e){ console.warn("sparkChart", canvasId, e); }
 }
 
 function renderSparks(){
@@ -589,7 +644,7 @@ window.openHydro=async function(id,name){
     const series = (j.value&&j.value.timeSeries)||[];
     if(!series.length){
       $("hydro-detail").innerHTML=`<div style="color:var(--text-dim)">No instantaneous values for site ${esc(id)}.</div>
-        <p style="margin-top:10px"><a style="color:var(--cyan)" href="https://waterdata.usgs.gov/monitoring-location/${id}/" target="_blank" rel="noopener">Open USGS monitoring page ↗</a></p>`;
+        <p style="margin-top:10px"><a style="color:var(--cyan)" href="https://waterdata.usgs.gov/monitoring-location/USGS-${id}/" target="_blank" rel="noopener">Open USGS monitoring page ↗</a></p>`;
       return;
     }
     let rows="";
@@ -613,11 +668,11 @@ window.openHydro=async function(id,name){
         <div style="font-size:9px;color:var(--text-dim);margin:-4px 0 8px 0">${esc(when)}</div>`;
     }
     $("hydro-detail").innerHTML = rows + `
-      <p style="margin-top:12px"><a style="color:var(--cyan)" href="https://waterdata.usgs.gov/monitoring-location/${id}/" target="_blank" rel="noopener">USGS monitoring location ${esc(id)} ↗</a></p>
+      <p style="margin-top:12px"><a style="color:var(--cyan)" href="https://waterdata.usgs.gov/monitoring-location/USGS-${id}/" target="_blank" rel="noopener">USGS monitoring location ${esc(id)} ↗</a></p>
       <p style="font-size:10px;color:var(--text-dim);margin-top:6px">NWIS instantaneous values · provisional data subject to revision</p>`;
   }catch(e){
     $("hydro-detail").innerHTML=`<span class="err">Failed to load NWIS data</span>
-      <p style="margin-top:10px"><a style="color:var(--cyan)" href="https://waterdata.usgs.gov/monitoring-location/${id}/" target="_blank" rel="noopener">Open USGS page ↗</a></p>`;
+      <p style="margin-top:10px"><a style="color:var(--cyan)" href="https://waterdata.usgs.gov/monitoring-location/USGS-${id}/" target="_blank" rel="noopener">Open USGS page ↗</a></p>`;
   }
 };
 
@@ -635,6 +690,74 @@ window.openHydroOverview=function(){
   openModal("Schuylkill Hydro Corridor", rows + `<p style="font-size:10px;color:var(--text-dim);margin-top:8px">USGS NWIS · click a gauge for full parameters</p>`);
 };
 
+/* ========== NOAA Tides · station 8545240 (Philadelphia) ========== */
+const TIDE_STATION = "8545240";
+let tideCache = null;
+
+async function fetchTides(){
+  try{
+    const base = "https://api.tidesandcurrents.noaa.gov/api/prod/datagetter";
+    const common = `station=${TIDE_STATION}&datum=MLLW&units=english&time_zone=lst_ldt&application=WeatherXplr&format=json`;
+    // Latest observed water level
+    const obsUrl = `${base}?date=latest&product=water_level&${common}`;
+    // Today's high/low predictions
+    const predUrl = `${base}?date=today&product=predictions&interval=hilo&${common}`;
+    // Air temperature if available
+    const airUrl = `${base}?date=latest&product=air_temperature&${common}`;
+
+    const [obsJ, predJ, airJ] = await Promise.all([
+      fetchT(obsUrl, {}, 12000).then(r=>r.json()).catch(()=>({})),
+      fetchT(predUrl, {}, 12000).then(r=>r.json()).catch(()=>({})),
+      fetchT(airUrl, {}, 10000).then(r=>r.json()).catch(()=>({}))
+    ]);
+
+    const obs = (obsJ.data && obsJ.data[0]) || null;
+    const preds = (predJ.predictions) || [];
+    const air = (airJ.data && airJ.data[0]) || null;
+
+    tideCache = { obs, preds, air, fetched: Date.now() };
+
+    if($("tide-mllw")){
+      if(obs && obs.v != null){
+        $("tide-mllw").textContent = Number(obs.v).toFixed(2) + " ft";
+      } else if(preds.length){
+        const next = preds.find(p => new Date(p.t) > new Date()) || preds[preds.length-1];
+        $("tide-mllw").textContent = next ? (Number(next.v).toFixed(2) + " ft (" + (next.type||"") + ")") : "—";
+      } else {
+        $("tide-mllw").textContent = "—";
+      }
+    }
+    if($("tide-air")){
+      $("tide-air").textContent = air && air.v != null ? Number(air.v).toFixed(1) + " °F" : "—";
+    }
+    setFeed("tides", true);
+  }catch(e){
+    console.warn("tides", e);
+    setFeed("tides", false);
+    if($("tide-mllw")) $("tide-mllw").textContent = "—";
+    if($("tide-air")) $("tide-air").textContent = "—";
+  }
+}
+
+window.openTides = function(){
+  const t = tideCache;
+  let body = `<div style="font-size:11px;color:var(--text-dim);margin-bottom:10px">NOAA CO-OPS · station ${TIDE_STATION} · Philadelphia</div>`;
+  if(t && t.obs){
+    body += `<div class="metric-row"><span class="k">Observed (MLLW)</span><span class="v">${Number(t.obs.v).toFixed(2)} ft</span></div>
+      <div style="font-size:9px;color:var(--text-dim);margin:-4px 0 8px 0">${esc((t.obs.t||"").replace("T"," "))}</div>`;
+  }
+  if(t && t.air && t.air.v != null){
+    body += `<div class="metric-row"><span class="k">Air temperature</span><span class="v">${Number(t.air.v).toFixed(1)} °F</span></div>`;
+  }
+  if(t && t.preds && t.preds.length){
+    body += `<div class="card-title" style="margin:12px 0 6px">Today · High / Low</div>`;
+    t.preds.forEach(p=>{
+      body += `<div class="metric-row"><span class="k">${esc(p.type||"—")} · ${esc((p.t||"").slice(11,16))}</span><span class="v">${Number(p.v).toFixed(2)} ft</span></div>`;
+    });
+  }
+  body += `<p style="margin-top:12px"><a style="color:var(--cyan)" href="https://tidesandcurrents.noaa.gov/noaatidepredictions.html?id=${TIDE_STATION}" target="_blank" rel="noopener">NOAA tide predictions ↗</a></p>`;
+  openModal("NOAA Tides · " + TIDE_STATION, body);
+};
 
 async function refreshAll(){
   await Promise.allSettled([
