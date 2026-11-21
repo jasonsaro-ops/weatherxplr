@@ -236,18 +236,27 @@ async function fetchPointAlerts(){
 async function fetchPhiAlerts(){
   try{
     const headers={Accept:"application/geo+json","User-Agent":"WeatherXplr/2.0"};
-    // PHI office zone alerts via area NJ/PA near mount holly - use active?office=PHI if supported
-    let j;
-    try{
-      j=await fetchT("https://api.weather.gov/alerts/active?office=PHI",{headers},12000).then(r=>r.json());
-    }catch(e){
-      j=await fetchT("https://api.weather.gov/alerts/active?area=NJ",{headers},12000).then(r=>r.json());
+    // NWS does not support ?area=PA reliably (400). Use area queries for PHI CWA states.
+    const urls=[
+      "https://api.weather.gov/alerts/active?area=PA",
+      "https://api.weather.gov/alerts/active?area=NJ",
+      "https://api.weather.gov/alerts/active?area=DE"
+    ];
+    const results=await Promise.all(urls.map(u=>fetchT(u,{headers},12000).then(r=>r.ok?r.json():{features:[]}).catch(()=>({features:[]}))));
+    const seen=new Set();
+    const all=[];
+    for(const j of results){
+      for(const f of (j.features||[])){
+        const id=f.id||(f.properties&&f.properties.id);
+        if(id && seen.has(id)) continue;
+        if(id) seen.add(id);
+        all.push(f);
+      }
     }
-    const all=(j.features||[]).slice(0,25);
     const box=$("phi-alerts");
     if(!box) return;
-    if(!all.length) box.innerHTML='<span class="err" style="color:var(--text-dim)">No PHI office alerts</span>';
-    else box.innerHTML=all.map(f=>{
+    if(!all.length) box.innerHTML='<span class="err" style="color:var(--text-dim)">No active alerts (PA/NJ/DE)</span>';
+    else box.innerHTML=all.slice(0,25).map(f=>{
       const p=f.properties||{};
       return `<div class="alert-item ${sevClass(p.severity)}" style="margin-bottom:4px"><div class="ev">${esc(p.event||"")}</div><div class="hd">${esc((p.headline||"").slice(0,120))}</div></div>`;
     }).join("");
@@ -838,7 +847,9 @@ function initWxMap(){
     $("btn-layers")?.classList.toggle("on");
   });
   $("btn-home")?.addEventListener("click", () => {
-      });
+    setSample(40.0759, -75.2996, "sepa");
+    if(wxMap) wxMap.setView([40.0759, -75.2996], 8, {animate:true});
+  });
 
   setTimeout(() => wxMap.invalidateSize(true), 250);
   window.addEventListener("resize", () => wxMap && wxMap.invalidateSize(true));
@@ -949,12 +960,24 @@ async function boot(){
       new Promise((_,rej)=>setTimeout(()=>rej(new Error("boot timeout")), 15000))
     ]);
   }catch(e){ console.warn("refreshAll boot", e); }
-dismiss();
-  setInterval(()=>{cd--;if(cd<=0){cd=CYCLE;refreshAll().catch(()=>{})}$("cd").textContent=cd},1000);
+  finally{
+    dismiss();
+  }
+  try{ initBrandHome(); }catch(e){}
+  setInterval(()=>{cd--;if(cd<=0){cd=CYCLE;refreshAll().catch(()=>{})} if($("cd")) $("cd").textContent=cd},1000);
   // Leaflet needs size after app visible
   setTimeout(()=>{ try{ wxMap && wxMap.invalidateSize(true); }catch(e){} }, 700);
 }
-document.addEventListener("DOMContentLoaded",boot);
+document.addEventListener("DOMContentLoaded", () => {
+  boot().catch(e => {
+    console.error("boot failed", e);
+    try{
+      $("boot")?.classList.add("out");
+      $("app")?.classList.add("on");
+      setTimeout(()=>$("boot")?.remove(),600);
+    }catch(_){}
+  });
+});
 
 function setSample(lat, lon, presetKey){
   sampleLat = +lat; sampleLon = +lon;

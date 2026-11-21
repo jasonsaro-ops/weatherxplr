@@ -4,6 +4,7 @@
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
 <meta name="theme-color" content="#0a0c10"/>
+<meta http-equiv="Permissions-Policy" content="geolocation=()">
 <title>WEATHERXPLR · Conshohocken 19428</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='14' fill='%233b9eff'/%3E%3Ctext x='16' y='21' text-anchor='middle' fill='%230a0c10' font-size='14' font-family='sans-serif' font-weight='700'%3EW%3C/text%3E%3C/svg%3E">
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet"/>
@@ -185,7 +186,7 @@
 <div id="app">
 <header class="top">
   <div class="brand" id="brand-home" title="Recenter · NWS Mount Holly (PHI)" style="cursor:pointer"><div class="brand-mark"></div><div><div class="brand-name">WEATHERXPLR</div><div class="brand-tag">19428 · Conshohocken</div></div></div>
-  <div class="nav-tabs"><div class="nav-tab on" data-view="map">Map</div><div class="nav-tab" data-view="windy">Windy Dual</div><div class="nav-tab" data-view="alerts">Alerts</div></div><div class="nav-tab" data-view="windy">Windy Dual</div><div class="nav-tab" data-view="alerts">Alerts</div><div class="nav-tab" data-view="models">Models</div></div>
+  <div class="nav-tabs"><div class="nav-tab on" data-view="map">Map</div><div class="nav-tab" data-view="windy">Windy Dual</div><div class="nav-tab" data-view="alerts">Alerts</div></div>
   <div class="top-mid"><div class="clock" id="clock">--:--:--</div><div class="chip live" id="chip-status">ONLINE</div><div class="chip" id="chip-alerts">ALERTS 0</div><div class="chip btn" id="btn-audio"><i class="fa-solid fa-volume-xmark" id="audio-ico"></i> <span id="audio-lbl">TONES</span></div></div>
   <div class="top-right"><div class="chip">CYCLE <b id="cd" style="color:var(--text)">120</b>s</div><div class="chip" id="chip-sync">SYNC --</div></div>
 </header>
@@ -229,7 +230,7 @@
             <option value="cape">CAPE</option>
           </select>
         </div>
-        <iframe id="windy-iframe-1" src="https://embed.windy.com/embed.html?type=map&location=coordinates&metricRain=in&metricTemp=f&metricWind=mph&zoom=8&overlay=radar&product=radar&level=surface&lat=40.0759&lon=-75.2996" allowfullscreen></iframe>
+        <iframe id="windy-iframe-1" src="https://embed.windy.com/embed.html?type=map&location=coordinates&metricRain=in&metricTemp=f&metricWind=mph&zoom=8&overlay=radar&product=radar&level=surface&lat=40.0759&lon=-75.2996" allow="fullscreen" allowfullscreen loading="lazy"></iframe>
       </div>
       <div class="windy-panel">
         <div class="w-label">CLOUDS / SECONDARY</div>
@@ -245,14 +246,13 @@
             <option value="cape">CAPE</option>
           </select>
         </div>
-        <iframe id="windy-iframe-2" src="https://embed.windy.com/embed.html?type=map&location=coordinates&metricRain=in&metricTemp=f&metricWind=mph&zoom=8&overlay=clouds&product=gfs&level=surface&lat=40.0759&lon=-75.2996" allowfullscreen></iframe>
+        <iframe id="windy-iframe-2" src="https://embed.windy.com/embed.html?type=map&location=coordinates&metricRain=in&metricTemp=f&metricWind=mph&zoom=8&overlay=clouds&product=gfs&level=surface&lat=40.0759&lon=-75.2996" allow="fullscreen" allowfullscreen loading="lazy"></iframe>
       </div>
     </div>
   </div>
 
   <div class="stage-split">
     <div class="map-frame">
-
       <div class="model-bar">
         <div class="model-chip on" data-layer="radar">US NEXRAD</div>
         <div class="model-chip" data-layer="global">Global</div>
@@ -268,10 +268,10 @@
         <span class="ra-label" id="radar-age">LIVE</span>
       </div>
       <div id="wx-map" role="application" aria-label="Radar map"></div>
-<div class="map-tools">
+      <div class="map-tools">
         <button type="button" class="map-btn" id="btn-layers" title="Layers"><i class="fa-solid fa-layer-group"></i></button>
         <button type="button" class="map-btn" id="btn-home" title="Home"><i class="fa-solid fa-crosshairs"></i></button>
-              </div>
+      </div>
       <div class="layer-pop" id="layer-pop">
         <h4>IEM OGC / TMS</h4>
         <label class="ly-row"><input type="radio" name="rad" id="ly-nexrad" value="radar" checked> US NEXRAD n0q</label>
@@ -284,63 +284,7 @@
         <label class="ly-row"><input type="checkbox" id="ly-qpe"> QPE 1h</label>
         <div style="font-size:10px;color:var(--text-dim);padding:4px 6px;line-height:1.35">Iowa State Mesonet OGC/TMS · mesonet.agron.iastate.edu/ogc</div>
       </div>
-      </div>
-        <h3>Storm 3D</h3>
-        <div class="s3d-btns">
-          <button type="button" id="btn-s3d-refresh" title="Refresh volume"><i class="fa-solid fa-rotate"></i></button>
-        </div>
-      </div>
-      <div class="s3d-presets" id="s3d-presets">
-        <button type="button" data-preset="sepa">SE-PA</button>
-        <button type="button" data-preset="z19428" class="active">19428</button>
-        <button type="button" data-preset="phl">KPHL</button>
-        <button type="button" data-preset="nyc">KNYC</button>
-        <button type="button" data-preset="abe">KABE</button>
-        <button type="button" data-preset="acy">KACY</button>
-        <button type="button" data-preset="ilg">KILG</button>
-        <button type="button" data-preset="rdg">KRDG</button>
-      </div>
-      <div class="s3d-sample-form">
-        <input id="s3d-lat" type="text" inputmode="decimal" value="40.0759" title="Latitude"/>
-        <input id="s3d-lon" type="text" inputmode="decimal" value="-75.2996" title="Longitude"/>
-        <button type="button" class="go" id="btn-s3d-go">GO</button>
-      </div>
-      <div class="nudge" title="Nudge sample 0.25°">
-        <span class="blank"></span>
-        <button type="button" data-nudge="n">N</button>
-        <span class="blank"></span>
-        <button type="button" data-nudge="w">W</button>
-        <button type="button" data-nudge="0">·</button>
-        <button type="button" data-nudge="e">E</button>
-        <span class="blank"></span>
-        <button type="button" data-nudge="s">S</button>
-        <span class="blank"></span>
-      </div>
-      <div class="s3d-loc" id="s3d-loc">40.0759°N 75.2996°W · sample</div>
-      <div class="s3d-loc" style="color:var(--text-dim);font-size:8px;padding-top:0">Click anywhere · 3D from model; ESTIMATED in US NEXRAD domain, MODEL elsewhere</div>
-        <div class="s3d-metrics" id="s3d-metrics">
-          <div class="row"><span class="k">Mode</span><span class="v" id="s3d-mode">—</span></div>
-          <div class="row"><span class="k">Echo top</span><span class="v" id="s3d-echo">—</span></div>
-          <div class="row"><span class="k">Max dBZ</span><span class="v" id="s3d-dbz">—</span></div>
-          <div class="row"><span class="k">Core top</span><span class="v" id="s3d-core">—</span></div>
-          <div class="row"><span class="k">CAPE</span><span class="v" id="s3d-cape">—</span></div>
-          <div class="row"><span class="k">Precip / Gust</span><span class="v" id="s3d-pg">—</span></div>
-        </div>
-        <div class="s3d-meters" id="s3d-meters">
-          <div class="s3d-meter"><div class="mh"><span class="ml">CAPE</span><span class="mv" id="m-cape">—</span></div><div class="s3d-bar"><i id="bar-cape"></i></div></div>
-          <div class="s3d-meter"><div class="mh"><span class="ml">Echo top</span><span class="mv" id="m-echo">—</span></div><div class="s3d-bar"><i id="bar-echo"></i></div></div>
-          <div class="s3d-meter"><div class="mh"><span class="ml">Max dBZ</span><span class="mv" id="m-dbz">—</span></div><div class="s3d-bar"><i id="bar-dbz"></i></div></div>
-          <div class="s3d-meter"><div class="mh"><span class="ml">Intensity</span><span class="mv" id="m-int">—</span></div><div class="s3d-bar"><i id="bar-int"></i></div></div>
-        </div>
-        <div class="s3d-wx" id="s3d-wx">
-          <div class="s3d-chip"><div class="cl">Weather</div><div class="cv" id="wx-code">—</div></div>
-          <div class="s3d-chip"><div class="cl">Instability</div><div class="cv" id="wx-inst">—</div></div>
-          <div class="s3d-chip"><div class="cl">Precip</div><div class="cv" id="wx-pcp">—</div></div>
-          <div class="s3d-chip"><div class="cl">Gust</div><div class="cv" id="wx-gst">—</div></div>
-        </div>
-        <div class="s3d-view" id="s3d-container"></div>
-      </div>
-    </aside>
+    </div>
   </div>
   <div class="time-strip"><span class="t-lab" id="t-lab">LIVE</span><div class="time-track"><div class="time-fill" id="time-fill"></div></div></div>
 </section>
