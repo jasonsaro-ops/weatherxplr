@@ -118,43 +118,75 @@ window.openConditions=function(){const c=omData&&omData.current;if(!c)return;
 
 function renderForecast(){
   if(!omData||!omData.daily)return;
-  const d=omData.daily;let rows="";
-  for(let i=0;i<Math.min(7,d.time.length);i++){
+  const d=omData.daily,n=Math.min(10,(d.time||[]).length);
+  let rows="";
+  for(let i=0;i<n;i++){
     const day=new Date(d.time[i]+"T12:00:00");
-    const lab=i===0?"Today":day.toLocaleDateString("en-US",{weekday:"short"});
-    rows+=`<tr onclick="openDayDetail(${i})"><td>${lab}</td><td class="hi">${Math.round(d.temperature_2m_max[i])}°</td><td class="lo">${Math.round(d.temperature_2m_min[i])}°</td><td>${d.precipitation_probability_max[i]??"—"}%</td></tr>`;
+    const lab=i===0?"Today":i===1?"Tomorrow":day.toLocaleDateString("en-US",{weekday:"short"});
+    rows+=`<tr onclick="event.stopPropagation();openDayDetail(${i})"><td>${lab}</td><td class="hi">${Math.round(d.temperature_2m_max[i])}°</td><td class="lo">${Math.round(d.temperature_2m_min[i])}°</td><td>${d.precipitation_probability_max[i]??"—"}%</td></tr>`;
   }
-  $("fc-daily").querySelector("tbody").innerHTML=rows;
+  const tb=$("fc-daily")&&$("fc-daily").querySelector("tbody");
+  if(tb) tb.innerHTML=rows;
 }
-window.openDayDetail=function(i){if(!omData||!omData.daily)return;const d=omData.daily;
-  openModal(`Forecast · ${d.time[i]}`,`<div class="metric-row"><span class="k">High</span><span class="v">${Math.round(d.temperature_2m_max[i])}°F</span></div>
-  <div class="metric-row"><span class="k">Low</span><span class="v">${Math.round(d.temperature_2m_min[i])}°F</span></div>
-  <div class="metric-row"><span class="k">PoP max</span><span class="v">${d.precipitation_probability_max[i]??"—"}%</span></div>
-  <div class="metric-row"><span class="k">Wind max</span><span class="v">${Math.round(d.wind_speed_10m_max[i])} mph</span></div>
-  <div class="metric-row"><span class="k">Sky</span><span class="v">${esc(WMO[d.weather_code[i]]||"—")}</span></div>`)}
 
-function sparkChart(id,labels,data,color,yLabel){
-  const canvas=$(id);if(!canvas)return;
-  if(charts[id])charts[id].destroy();
-  Chart.defaults.color="#6b7a90";Chart.defaults.font.family="IBM Plex Mono";Chart.defaults.font.size=9;
-  const nums=(data||[]).filter(v=>v!=null&&!isNaN(v));
-  const ymin=nums.length?Math.floor(Math.min(...nums)):0;
-  const ymax=nums.length?Math.ceil(Math.max(...nums)):1;
-  // sparse x labels: every ~6 hours among hourly labels
-  const xLabels=labels.map((h,i)=> (i%6===0 ? (String(h).padStart?String(h).padStart(2,"0"):h)+":00" : ""));
-  charts[id]=new Chart(canvas,{
-    type:"line",
-    data:{labels:xLabels,datasets:[{data,borderColor:color,borderWidth:1.5,pointRadius:0,fill:true,backgroundColor:color+"22",tension:.35}]},
-    options:{
-      responsive:true,maintainAspectRatio:false,
-      plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>`${ctx.parsed.y}${yLabel?(" "+yLabel):""}`}}},
-      scales:{
-        x:{display:true,ticks:{maxRotation:0,autoSkip:true,maxTicksLimit:6,color:"#6b7a90",font:{size:8}},grid:{color:"rgba(42,49,64,.5)"}},
-        y:{display:true,min:ymin,max:ymax===ymin?ymax+1:ymax,ticks:{maxTicksLimit:4,color:"#6b7a90",font:{size:8},callback:v=>v+(yLabel?"":"")},grid:{color:"rgba(42,49,64,.45)"}}
-      }
-    }
-  });
+window.openDayDetail=function(i){
+  if(!omData||!omData.daily)return;
+  const d=omData.daily;
+  if(i<0||i>=d.time.length)return;
+  openModal(`Forecast · ${d.time[i]}`,`
+    <div class="metric-row"><span class="k">High</span><span class="v">${Math.round(d.temperature_2m_max[i])}°F</span></div>
+    <div class="metric-row"><span class="k">Low</span><span class="v">${Math.round(d.temperature_2m_min[i])}°F</span></div>
+    <div class="metric-row"><span class="k">PoP max</span><span class="v">${d.precipitation_probability_max[i]??"—"}%</span></div>
+    <div class="metric-row"><span class="k">Precip sum</span><span class="v">${d.precipitation_sum&&d.precipitation_sum[i]!=null?d.precipitation_sum[i].toFixed(2)+" in":"—"}</span></div>
+    <div class="metric-row"><span class="k">Wind max</span><span class="v">${d.wind_speed_10m_max?Math.round(d.wind_speed_10m_max[i])+" mph":"—"}</span></div>
+    <div class="metric-row"><span class="k">Gusts</span><span class="v">${d.wind_gusts_10m_max?Math.round(d.wind_gusts_10m_max[i])+" mph":"—"}</span></div>
+    <div class="metric-row"><span class="k">Sky</span><span class="v">${esc(WMO[d.weather_code[i]]||"—")}</span></div>
+    <div class="metric-row"><span class="k">Sunrise</span><span class="v">${esc((d.sunrise&&d.sunrise[i]||"").slice(11,16)||"—")}</span></div>
+    <div class="metric-row"><span class="k">Sunset</span><span class="v">${esc((d.sunset&&d.sunset[i]||"").slice(11,16)||"—")}</span></div>
+  `);
 }
+window.openForecast10=function(){
+  if(!omData||!omData.daily)return;
+  const d=omData.daily,n=Math.min(10,(d.time||[]).length);
+  let rows="";
+  for(let i=0;i<n;i++){
+    const day=new Date(d.time[i]+"T12:00:00");
+    const lab=i===0?"Today":day.toLocaleDateString("en-US",{weekday:"short",month:"short",day:"numeric"});
+    rows+=`<tr style="cursor:pointer" onclick="openDayDetail(${i})"><td>${lab}</td><td class="hi">${Math.round(d.temperature_2m_max[i])}°</td><td class="lo">${Math.round(d.temperature_2m_min[i])}°</td><td>${d.precipitation_probability_max[i]??"—"}%</td><td>${d.precipitation_sum&&d.precipitation_sum[i]!=null?d.precipitation_sum[i].toFixed(2):"—"}</td><td>${d.wind_speed_10m_max?Math.round(d.wind_speed_10m_max[i]):"—"}</td><td>${esc(WMO[d.weather_code[i]]||"—")}</td></tr>`;
+  }
+  openModal("10-Day Outlook · 19428",`
+    <div style="overflow:auto"><table class="fc-table" style="font-size:11px">
+      <thead><tr><th>Day</th><th>Hi</th><th>Lo</th><th>PoP</th><th>Precip</th><th>Wind</th><th>Sky</th></tr></thead>
+      <tbody>${rows}</tbody>
+    </table></div>
+    <div style="font-size:10px;color:var(--text-dim);margin-top:8px">Open-Meteo · click a row for detail</div>
+  `);
+}
+window.openHourlyDetail=function(){
+  if(!omData||!omData.hourly)return;
+  const h=omData.hourly;
+  const n=Math.min(48,(h.time||[]).length);
+  let rows="";
+  for(let i=0;i<n;i+=2){
+    rows+=`<tr><td>${esc(String(h.time[i]).replace("T"," ").slice(5,16))}</td><td>${Math.round(h.temperature_2m[i])}°</td><td>${h.precipitation_probability[i]??"—"}%</td><td>${Math.round(h.wind_speed_10m[i])} mph</td></tr>`;
+  }
+  openModal("Hourly · next 48h",`
+    <div style="overflow:auto;max-height:60vh"><table class="fc-table">
+      <thead><tr><th>Time</th><th>Temp</th><th>PoP</th><th>Wind</th></tr></thead>
+      <tbody>${rows}</tbody>
+    </table></div>
+  `);
+}
+window.openSamplePoint=function(){
+  openModal("Sample point · 19428",`
+    <div class="metric-row"><span class="k">Lat</span><span class="v">${sampleLat.toFixed(4)}°</span></div>
+    <div class="metric-row"><span class="k">Lon</span><span class="v">${sampleLon.toFixed(4)}°</span></div>
+    <div class="metric-row"><span class="k">Label</span><span class="v">Conshohocken / ZIP 19428</span></div>
+    <div class="metric-row"><span class="k">CWA</span><span class="v">PHI · Mount Holly</span></div>
+    <div style="font-size:11px;color:var(--text-dim);margin-top:8px">${esc(($("pt-station")&&$("pt-station").textContent)||"")}</div>
+  `);
+}
+
 function renderSparks(){
   if(!omData||!omData.hourly)return;
   const h=omData.hourly,now=Date.now();
@@ -273,8 +305,8 @@ async function fetchOpenMeteo(){
     const u=`https://api.open-meteo.com/v1/forecast?latitude=${LAT}&longitude=${LON}`+
       `&current=temperature_2m,relative_humidity_2m,apparent_temperature,precipitation,weather_code,cloud_cover,pressure_msl,wind_speed_10m,wind_direction_10m,wind_gusts_10m`+
       `&hourly=temperature_2m,precipitation_probability,wind_speed_10m`+
-      `&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max`+
-      `&temperature_unit=fahrenheit&wind_speed_unit=mph&precipitation_unit=inch&timezone=America%2FNew_York&forecast_days=7`;
+      `&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max,precipitation_sum,wind_speed_10m_max,wind_gusts_10m_max,sunrise,sunset`+
+      `&temperature_unit=fahrenheit&wind_speed_unit=mph&precipitation_unit=inch&timezone=America%2FNew_York&forecast_days=10`;
     const r=await fetchT(u,{},15000);
     if(!r.ok) throw new Error("OM HTTP "+r.status);
     omData=await r.json();
@@ -416,162 +448,59 @@ window.openObs=function(id){const p=obsCache[id];if(!p)return;
 
 async function fetchAQI(){
   try{
-    const data=await fetchT(`https://air-quality-api.open-meteo.com/v1/air-quality?latitude=${LAT}&longitude=${LON}&current=us_aqi,pm2_5,pm10,ozone,nitrogen_dioxide,sulphur_dioxide&timezone=America%2FNew_York`,{},12000).then(r=>r.json());
+    const data=await fetchT(`https://air-quality-api.open-meteo.com/v1/air-quality?latitude=${sampleLat}&longitude=${sampleLon}&current=us_aqi,pm2_5,pm10,ozone,nitrogen_dioxide,sulphur_dioxide&hourly=us_aqi,pm2_5,pm10,ozone&timezone=America%2FNew_York&forecast_days=3`,{},12000).then(r=>r.json());
     setFeed("aqi",true);
     const c=data.current||{};
-    aqiCache={current:c};
+    aqiCache={current:c,hourly:data.hourly||null};
     const aqi=c.us_aqi;
-    $("aqi-val").textContent=aqi!=null?aqi:"—";
+    if($("aqi-val")) $("aqi-val").textContent=aqi!=null?aqi:"—";
     let cat="—";
     if(aqi!=null){
-      if(aqi<=50)cat="Good"; else if(aqi<=100)cat="Moderate"; else if(aqi<=150)cat="USG"; else if(aqi<=200)cat="Unhealthy"; else cat="Very Unhealthy";
+      if(aqi<=50)cat="Good"; else if(aqi<=100)cat="Moderate"; else if(aqi<=150)cat="USG"; else if(aqi<=200)cat="Unhealthy"; else if(aqi<=300)cat="Very Unhealthy"; else cat="Hazardous";
     }
-    $("aqi-cat").textContent=cat;
-    $("aqi-cat").style.color=aqi!=null&&aqi>100?"var(--red)":aqi>50?"var(--amber)":"var(--green)";
+    if($("aqi-cat")){
+      $("aqi-cat").textContent=cat;
+      $("aqi-cat").style.color=aqi!=null&&aqi>100?"var(--red)":aqi>50?"var(--amber)":"var(--green)";
+    }
+    if($("aqi-pm25")) $("aqi-pm25").textContent=c.pm2_5!=null?c.pm2_5.toFixed(1)+" µg/m³":"—";
+    if($("aqi-pm10")) $("aqi-pm10").textContent=c.pm10!=null?c.pm10.toFixed(1)+" µg/m³":"—";
+    if($("aqi-o3")) $("aqi-o3").textContent=c.ozone!=null?c.ozone.toFixed(1)+" µg/m³":"—";
+    // needle 0-300 scale on bar
+    const needle=$("aqi-needle");
+    if(needle && aqi!=null){
+      const pct=Math.max(0,Math.min(100,(aqi/300)*100));
+      needle.style.left=pct+"%";
+    }
+    renderAqiSparks();
   }catch(e){console.warn("AQI",e);setFeed("aqi",false)}
 }
-window.openAQI=function(){const c=aqiCache.current;if(!c)return;
-  openModal(`Air Quality · US AQI ${c.us_aqi??"—"}`,`<div class="metric-row"><span class="k">US AQI</span><span class="v">${c.us_aqi??"—"}</span></div>
-  <div class="metric-row"><span class="k">PM2.5</span><span class="v">${c.pm2_5??"—"}</span></div>
-  <div class="metric-row"><span class="k">PM10</span><span class="v">${c.pm10??"—"}</span></div>
-  <div class="metric-row"><span class="k">Ozone</span><span class="v">${c.ozone??"—"}</span></div>
-  <div class="metric-row"><span class="k">NO₂</span><span class="v">${c.nitrogen_dioxide??"—"}</span></div>`)};
-
-function fetchHydro(){
-  setFeed("hydro", true);
-  const box = $("hydro-list");
-  if (!box) return;
-  box.innerHTML = GAUGES.map(g => {
-    const short = g.name.replace("Schuylkill @ ", "Sch. ");
-    return '<div class="obs-row" data-id="'+g.id+'"><div><div class="id">'+esc(short)+'</div><div class="nm">'+g.id+'</div></div><div class="tv">↗</div></div>';
-  }).join("");
-  box.querySelectorAll(".obs-row").forEach(el => {
-    el.addEventListener("click", () => {
-      const id = el.getAttribute("data-id");
-      const g = GAUGES.find(x => x.id === id);
-      openHydro(id, g ? g.name : id);
-    });
-  });
+function renderAqiSparks(){
+  const h=aqiCache&&aqiCache.hourly; if(!h||!h.time)return;
+  const n=Math.min(48,h.time.length);
+  const labels=h.time.slice(0,n).map(t=>t.slice(11,13));
+  sparkChart("c-aqi", labels, (h.us_aqi||[]).slice(0,n), "#f5a623", "AQI");
+  sparkChart("c-pm25", labels, (h.pm2_5||[]).slice(0,n), "#a78bfa", "µg");
 }
 
-window.openHydro=function(id,name){openModal(`USGS · ${name}`,`<div style="height:400px"><iframe src="https://dashboard.waterdata.usgs.gov/api/gwis/2.1/service/site?agencyCode=USGS&siteNumber=${id}&open=plots&banner=false&pad=false" style="width:100%;height:100%;border:none;background:#fff;border-radius:4px"></iframe></div>`)};
-
-async function fetchTides(){
-  try{
-    const station="8545240";
-    const [wl,air]=await Promise.all([
-      fetchT(`https://api.tidesandcurrents.noaa.gov/api/prod/datagetter?date=latest&station=${station}&product=water_level&datum=MLLW&units=english&time_zone=lst_ldt&format=json`,{},12000).then(r=>r.json()),
-      fetchT(`https://api.tidesandcurrents.noaa.gov/api/prod/datagetter?date=latest&station=${station}&product=air_temperature&units=english&time_zone=lst_ldt&format=json`,{},12000).then(r=>r.json()),
-    ]);
-    setFeed("tides",true);
-    const last=wl.data&&wl.data[wl.data.length-1];
-    const la=air.data&&air.data[air.data.length-1];
-    $("tide-mllw").textContent=last?last.v+" ft":"—";
-    $("tide-air").textContent=la?la.v+"°F":"—";
-    window.__tide={last,la,wl};
-  }catch(e){console.warn("tides",e);setFeed("tides",false)}
-}
-window.openTides=function(){const t=window.__tide||{};openModal("Tides · 8545240",`<div class="metric-row"><span class="k">MLLW</span><span class="v">${t.last?t.last.v+" ft":"—"}</span></div><div class="metric-row"><span class="k">Air</span><span class="v">${t.la?t.la.v+"°F":"—"}</span></div><div style="margin-top:8px;font-size:11px;color:var(--text-dim)">NOAA CO-OPS · Delaware River</div>`)};
-
-async function fetchKPHL(){
-  try{
-    const headers={Accept:"application/geo+json,application/ld+json","User-Agent":"WeatherXplr/2.0 (github.com/jasonsaro-ops)"};
-    const obs=await fetchT("https://api.weather.gov/stations/KPHL/observations/latest",{headers},12000).then(r=>r.json());
-    kphlObs=obs.properties||{};
-    const p=kphlObs;
-    const tC=p.temperature&&p.temperature.value;
-    const tF=tC!=null?Math.round(tC*9/5+32):"—";
-    const setHtml=(id,html)=>{const e=$(id); if(e) e.innerHTML=html};
-    const setTxt=(id,t)=>{const e=$(id); if(e) e.textContent=t};
-    setHtml("kphl-temp", tF+`<span class="card-unit">°F</span>`);
-    setHtml("kphl-temp-r", tF+`<span class="card-unit">°F</span>`);
-    setTxt("kphl-desc", p.textDescription||"Philadelphia Intl");
-    setTxt("kphl-desc-r", p.textDescription||"Philadelphia Intl");
-    setTxt("kphl-wx-r", p.textDescription||"—");
-    const wC=p.windSpeed&&p.windSpeed.value;
-    const wD=p.windDirection&&p.windDirection.value;
-    const wMph=wC!=null?Math.round(wC*2.23694):null;
-    const gustC=p.windGust&&p.windGust.value;
-    const gustMph=gustC!=null?Math.round(gustC*2.23694):null;
-    setTxt("kphl-wind", wMph!=null?`${wMph} mph · ${wD??"—"}°`:"—");
-    setTxt("kphl-wind-r", wMph!=null?`${wMph} mph`:"—");
-    setTxt("kphl-gust", gustMph!=null?gustMph+" mph":"—");
-    const vis=p.visibility&&p.visibility.value;
-    const visMi=vis!=null?(vis/1609.34).toFixed(1)+" mi":"—";
-    setTxt("kphl-vis", visMi);
-    setTxt("kphl-vis-r", visMi);
-    const dew=p.dewpoint&&p.dewpoint.value;
-    setTxt("kphl-dew", dew!=null?Math.round(dew*9/5+32)+"°F":"—");
-    const rh=p.relativeHumidity&&p.relativeHumidity.value;
-    setTxt("kphl-rh", rh!=null?Math.round(rh)+"%":"—");
-    const pr=p.barometricPressure&&p.barometricPressure.value;
-    setTxt("kphl-pres", pr!=null?Math.round(pr/100)+" hPa":"—");
-    setTxt("kphl-metar", p.rawMessage||"—");
-    try{
-      const list=await fetchT("https://api.weather.gov/products/types/AFD/locations/PHI",{headers},12000).then(r=>r.json());
-      const g=list["@graph"]||[];
-      if(g.length){
-        const prod=await fetchT(g[0]["@id"]||`https://api.weather.gov/products/${g[0].id}`,{headers},12000).then(r=>r.json());
-        afdFull=prod.productText||"";
-        if($("phi-afd")) $("phi-afd").textContent=(afdFull||"").slice(0,2500)+(afdFull&&afdFull.length>2500?"…":"");
-      }
-    }catch(e){}
-    fetchPhiAlerts().catch(()=>{});
-  }catch(e){console.warn("KPHL",e)}
-}
-window.openKPHL=function(){const p=kphlObs||{};const tF=p.temperature&&p.temperature.value!=null?((p.temperature.value*9/5)+32).toFixed(1):"—";
-  openModal("KPHL · Philadelphia Intl",`<div style="font-size:28px;font-weight:700;font-family:var(--font-mono);margin-bottom:4px">${tF}°F</div>
-  <div style="color:var(--text-mid);margin-bottom:10px">${esc(p.textDescription||"—")}</div>
-  ${p.rawMessage?`<pre style="background:var(--bg);padding:8px;font-size:11px;font-family:var(--font-mono);overflow:auto">${esc(p.rawMessage)}</pre>`:""}
-  <button class="btn" style="width:100%" onclick="openAFD()">PHI Area Forecast Discussion</button>`)};
-window.openAFD=function(){if(!afdFull){openModal("PHI AFD",`<span class="err">Not loaded yet</span>`);return}openModal("PHI AFD",`<pre style="white-space:pre-wrap;font-size:12px;font-family:var(--font-mono)">${esc(afdFull)}</pre>`)};
-
-;
-
-window.openAlertsConsole=async function(){
-  openModal("Alerts · SE-PA / 19428", `<div id="alerts-console"><span class="err" style="color:var(--text-dim)">Loading…</span></div>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:12px">
-      <button class="btn" onclick="window.open('https://www.spc.noaa.gov/products/outlook/','_blank')">SPC Day 1–3 ↗</button>
-      <button class="btn" onclick="window.open('https://www.weather.gov/phi/','_blank')">NWS PHI ↗</button>
-      <button class="btn" onclick="window.open('https://alerts.weather.gov/','_blank')">NWS CAP feed ↗</button>
-      <button class="btn" onclick="fetchAlerts().then(()=>openAlertsConsole())">Refresh list</button>
-    </div>`);
-  try{
-    const headers={Accept:"application/geo+json","User-Agent":"WeatherXplr/2.0"};
-    const [pt, pa] = await Promise.all([
-      fetchT(`https://api.weather.gov/alerts/active?point=${sampleLat},${sampleLon}`,{headers},12000).then(r=>r.json()).catch(()=>({features:[]})),
-      fetchT("https://api.weather.gov/alerts/active?area=PA",{headers},12000).then(r=>r.json()).catch(()=>({features:[]})),
-    ]);
-    const seen=new Set();
-    const merge=[];
-    for(const f of (pt.features||[])){
-      const id=f.id; if(id&&seen.has(id)) continue; if(id) seen.add(id); merge.push(f);
-    }
-    for(const f of (pa.features||[])){
-      if(!isSePaAlert(f)) continue;
-      const id=f.id; if(id&&seen.has(id)) continue; if(id) seen.add(id); merge.push(f);
-    }
-    const sevOrder={Extreme:0,Severe:1,Moderate:2,Minor:3,Unknown:4};
-    merge.sort((a,b)=>(sevOrder[(a.properties||{}).severity]??5)-(sevOrder[(b.properties||{}).severity]??5));
-    const box=$("alerts-console");
-    if(!box) return;
-    if(!merge.length){
-      box.innerHTML=`<div style="color:var(--text-dim)">No active SE-PA / 19428 alerts.</div>`;
-      return;
-    }
-    box.innerHTML=`<div style="font-size:11px;color:var(--text-dim);margin-bottom:8px">${merge.length} active · 19428 point + SE-PA</div>`+
-      merge.slice(0,60).map(f=>{
-        const p=f.properties||{};
-        return `<div class="alert-item ${sevClass(p.severity)}" style="margin-bottom:6px">
-          <div class="ev">${esc(p.event||"Alert")} · ${esc(p.severity||"")}</div>
-          <div class="hd">${esc(p.headline||p.areaDesc||"")}</div>
-        </div>`;
-      }).join("");
-  }catch(e){
-    const box=$("alerts-console");
-    if(box) box.innerHTML=`<span class="err">${esc(String(e.message||e))}</span>`;
-  }
+window.openAQI=function(){
+  const c=aqiCache.current; if(!c)return;
+  const aqi=c.us_aqi;
+  let cat="—";
+  if(aqi!=null){ if(aqi<=50)cat="Good"; else if(aqi<=100)cat="Moderate"; else if(aqi<=150)cat="Unhealthy for Sensitive"; else if(aqi<=200)cat="Unhealthy"; else if(aqi<=300)cat="Very Unhealthy"; else cat="Hazardous"; }
+  openModal(`Air Quality · US AQI ${aqi??"—"}`,`
+    <div style="font-size:13px;margin-bottom:10px;color:var(--text-mid)">${esc(cat)}</div>
+    <div class="aqi-bar" style="height:14px;margin-bottom:4px"><span class="aqi-needle" style="left:${aqi!=null?Math.min(100,(aqi/300)*100):0}%"></span></div>
+    <div class="aqi-bar-lbl" style="margin-bottom:12px"><span>Good</span><span>Mod</span><span>USG</span><span>Unh</span><span>V.Unh</span></div>
+    <div class="metric-row"><span class="k">US AQI</span><span class="v">${aqi??"—"}</span></div>
+    <div class="metric-row"><span class="k">PM2.5</span><span class="v">${c.pm2_5!=null?c.pm2_5.toFixed(1)+" µg/m³":"—"}</span></div>
+    <div class="metric-row"><span class="k">PM10</span><span class="v">${c.pm10!=null?c.pm10.toFixed(1)+" µg/m³":"—"}</span></div>
+    <div class="metric-row"><span class="k">Ozone</span><span class="v">${c.ozone!=null?c.ozone.toFixed(1)+" µg/m³":"—"}</span></div>
+    <div class="metric-row"><span class="k">NO₂</span><span class="v">${c.nitrogen_dioxide!=null?c.nitrogen_dioxide.toFixed(1)+" µg/m³":"—"}</span></div>
+    <div class="metric-row"><span class="k">SO₂</span><span class="v">${c.sulphur_dioxide!=null?c.sulphur_dioxide.toFixed(1)+" µg/m³":"—"}</span></div>
+    <div style="font-size:11px;color:var(--text-dim);margin-top:10px">Open-Meteo Air Quality · sample ${sampleLat.toFixed(3)}, ${sampleLon.toFixed(3)}</div>
+  `);
 };
+
 
 
 window.focusMapView=function(){
@@ -596,6 +525,117 @@ window.focusMapView=function(){
 let vcCurrent = null;
 let vcHistory = null;
 
+
+async function fetchHydro(){
+  const box = $("hydro-list");
+  if (!box) return;
+  const ids = GAUGES.map(g=>g.id).join(",");
+  try{
+    const j = await fetchT(`https://waterservices.usgs.gov/nwis/iv/?format=json&sites=${ids}&parameterCd=00060,00065,00010&siteStatus=all`,{},15000).then(r=>r.json());
+    const series = (j.value&&j.value.timeSeries)||[];
+    const bySite = {};
+    for(const t of series){
+      const sid = t.sourceInfo&&t.sourceInfo.siteCode&&t.sourceInfo.siteCode[0]&&t.sourceInfo.siteCode[0].value;
+      const pcode = t.variable&&t.variable.variableCode&&t.variable.variableCode[0]&&t.variable.variableCode[0].value;
+      const vals = t.values&&t.values[0]&&t.values[0].value;
+      const last = vals&&vals.length?vals[vals.length-1]:null;
+      if(!sid||!last) continue;
+      if(!bySite[sid]) bySite[sid]={};
+      bySite[sid][pcode] = last;
+      bySite[sid].name = t.sourceInfo.siteName||sid;
+    }
+    window.__hydro = bySite;
+    setFeed("hydro", true);
+    box.innerHTML = GAUGES.map(g => {
+      const s = bySite[g.id]||{};
+      const flow = s["00060"];
+      const stage = s["00065"];
+      const temp = s["00010"];
+      let tv = "—";
+      if(flow && flow.value!=null && Number(flow.value)>-90000) tv = Math.round(Number(flow.value)).toLocaleString()+" cfs";
+      else if(stage && stage.value!=null && Number(stage.value)>-90000) tv = Number(stage.value).toFixed(2)+" ft";
+      else if(temp && temp.value!=null && Number(temp.value)>-90000) tv = (Number(temp.value)*9/5+32).toFixed(0)+"°F";
+      const short = g.name.replace("Schuylkill @ ", "Sch. ");
+      return `<div class="obs-row" data-id="${g.id}" style="cursor:pointer"><div><div class="id">${esc(short)}</div><div class="nm">${g.id}</div></div><div class="tv">${esc(tv)}</div></div>`;
+    }).join("");
+    box.querySelectorAll(".obs-row").forEach(el => {
+      el.addEventListener("click", () => {
+        const id = el.getAttribute("data-id");
+        const g = GAUGES.find(x => x.id === id);
+        openHydro(id, g ? g.name : id);
+      });
+    });
+  }catch(e){
+    console.warn("hydro", e);
+    setFeed("hydro", false);
+    box.innerHTML = GAUGES.map(g => {
+      const short = g.name.replace("Schuylkill @ ", "Sch. ");
+      return `<div class="obs-row" data-id="${g.id}" style="cursor:pointer"><div><div class="id">${esc(short)}</div><div class="nm">${g.id}</div></div><div class="tv">↗</div></div>`;
+    }).join("");
+    box.querySelectorAll(".obs-row").forEach(el => {
+      el.addEventListener("click", () => {
+        const id = el.getAttribute("data-id");
+        const g = GAUGES.find(x => x.id === id);
+        openHydro(id, g ? g.name : id);
+      });
+    });
+  }
+}
+
+window.openHydro=async function(id,name){
+  openModal(`USGS · ${name}`,`<div id="hydro-detail"><span style="color:var(--text-dim)">Loading NWIS…</span></div>`);
+  try{
+    const j = await fetchT(`https://waterservices.usgs.gov/nwis/iv/?format=json&sites=${id}&siteStatus=all`,{},15000).then(r=>r.json());
+    const series = (j.value&&j.value.timeSeries)||[];
+    if(!series.length){
+      $("hydro-detail").innerHTML=`<div style="color:var(--text-dim)">No instantaneous values for site ${esc(id)}.</div>
+        <p style="margin-top:10px"><a style="color:var(--cyan)" href="https://waterdata.usgs.gov/monitoring-location/${id}/" target="_blank" rel="noopener">Open USGS monitoring page ↗</a></p>`;
+      return;
+    }
+    let rows="";
+    for(const t of series){
+      const pcode = t.variable.variableCode[0].value;
+      const vname = t.variable.variableName||pcode;
+      const unit = (t.variable.unit&&t.variable.unit.unitCode)||"";
+      const vals = t.values&&t.values[0]&&t.values[0].value;
+      const last = vals&&vals.length?vals[vals.length-1]:null;
+      if(!last) continue;
+      let display = last.value;
+      if(pcode==="00010" && last.value!=null && Number(last.value)>-90000){
+        display = (Number(last.value)*9/5+32).toFixed(1)+" °F (water)";
+      } else if(last.value!=null && Number(last.value)<=-90000){
+        display = "Sensor unavailable";
+      } else {
+        display = `${last.value} ${unit}`;
+      }
+      const when = (last.dateTime||"").replace("T"," ").slice(0,19);
+      rows += `<div class="metric-row"><span class="k">${esc(vname.slice(0,42))}</span><span class="v">${esc(String(display))}</span></div>
+        <div style="font-size:9px;color:var(--text-dim);margin:-4px 0 8px 0">${esc(when)}</div>`;
+    }
+    $("hydro-detail").innerHTML = rows + `
+      <p style="margin-top:12px"><a style="color:var(--cyan)" href="https://waterdata.usgs.gov/monitoring-location/${id}/" target="_blank" rel="noopener">USGS monitoring location ${esc(id)} ↗</a></p>
+      <p style="font-size:10px;color:var(--text-dim);margin-top:6px">NWIS instantaneous values · provisional data subject to revision</p>`;
+  }catch(e){
+    $("hydro-detail").innerHTML=`<span class="err">Failed to load NWIS data</span>
+      <p style="margin-top:10px"><a style="color:var(--cyan)" href="https://waterdata.usgs.gov/monitoring-location/${id}/" target="_blank" rel="noopener">Open USGS page ↗</a></p>`;
+  }
+};
+
+window.openHydroOverview=function(){
+  const h=window.__hydro||{};
+  let rows=GAUGES.map(g=>{
+    const s=h[g.id]||{};
+    const flow=s["00060"], stage=s["00065"], temp=s["00010"];
+    let parts=[];
+    if(flow&&Number(flow.value)>-90000) parts.push(Math.round(Number(flow.value)).toLocaleString()+" cfs");
+    if(stage&&Number(stage.value)>-90000) parts.push(Number(stage.value).toFixed(2)+" ft");
+    if(temp&&Number(temp.value)>-90000) parts.push((Number(temp.value)*9/5+32).toFixed(0)+"°F water");
+    return `<div class="obs-row" style="cursor:pointer;margin-bottom:6px" onclick="openHydro('${g.id}','${g.name.replace(/'/g,"")}')"><div><div class="id">${esc(g.name)}</div><div class="nm">${g.id}</div></div><div class="tv">${esc(parts.join(" · ")||"—")}</div></div>`;
+  }).join("");
+  openModal("Schuylkill Hydro Corridor", rows + `<p style="font-size:10px;color:var(--text-dim);margin-top:8px">USGS NWIS · click a gauge for full parameters</p>`);
+};
+
+
 async function refreshAll(){
   await Promise.allSettled([
     fetchOpenMeteo().catch(e=>console.warn(e)),
@@ -604,7 +644,7 @@ async function refreshAll(){
     fetchAQI().catch(e=>console.warn(e)),
     fetchTides().catch(e=>console.warn(e)),
   ]);
-  try{ fetchHydro(); }catch(e){}
+  try{ await fetchHydro(); }catch(e){}
   if($("chip-sync")) $("chip-sync").textContent="SYNC "+new Date().toLocaleTimeString("en-US",{hour12:false,timeZone:"America/New_York"});
 }
 
@@ -900,7 +940,9 @@ function initWindyDual(){
   if(window.__windyInited) return;
   window.__windyInited = true;
   function setLayer(iframeId, layer){
-    const product = (layer === "radar" || layer === "satellite") ? layer : "gfs";
+    let product = "ecmwf";
+    if(layer === "radar" || layer === "satellite") product = layer;
+    else if(["pm2p5","dustConcentration","no2","so2","cosc"].includes(layer)) product = "cams";
     const el = $(iframeId);
     if(el) el.src = `https://embed.windy.com/embed.html?type=map&location=coordinates&metricRain=in&metricTemp=f&metricWind=mph&zoom=8&overlay=${layer}&product=${product}&level=surface&lat=${sampleLat}&lon=${sampleLon}`;
   }
@@ -926,8 +968,13 @@ function recenterWindy(){
   const s1=$("windy-layer-1"), s2=$("windy-layer-2");
   const l1=s1?s1.value:"radar";
   const l2=s2?s2.value:"clouds";
-  setSrc("windy-iframe-1", l1, (l1==="radar"||l1==="satellite")?l1:"gfs");
-  setSrc("windy-iframe-2", l2, (l2==="radar"||l2==="satellite")?l2:"gfs");
+  function prod(layer){
+    if(layer==="radar"||layer==="satellite") return layer;
+    if(["pm2p5","dustConcentration","no2","so2"].includes(layer)) return "cams";
+    return "ecmwf";
+  }
+  setSrc("windy-iframe-1", l1, prod(l1));
+  setSrc("windy-iframe-2", l2, prod(l2));
 }
 
 async function boot(){

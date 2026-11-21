@@ -185,6 +185,14 @@
 .alerts-pane-body{flex:1;overflow-y:auto;padding:6px 8px;min-height:0}
 .alerts-pane-body .alert-item{margin-bottom:6px}
 
+
+.aqi-bar-wrap{margin-top:4px}
+.aqi-bar{position:relative;height:10px;border-radius:5px;background:linear-gradient(90deg,#00e400 0%,#ffff00 25%,#ff7e00 50%,#ff0000 75%,#8f3f97 100%);border:1px solid var(--line)}
+.aqi-bar i{display:none}
+.aqi-needle{position:absolute;top:-3px;width:3px;height:16px;background:#fff;border-radius:2px;box-shadow:0 0 4px #000;transform:translateX(-50%)}
+.aqi-bar-lbl{display:flex;justify-content:space-between;font-size:8px;color:var(--text-dim);margin-top:2px;font-family:var(--font-mono)}
+.spark.tall{height:72px;position:relative}
+
 </style>
 </head>
 <body>
@@ -199,7 +207,7 @@
 <aside class="rail">
   <div class="rail-body" style="padding-top:8px">
     <div class="pane on" id="pane-cond">
-      <div class="card" style="cursor:default"><div class="card-hd"><span class="card-title">Sample point</span><span class="card-sub" id="pt-coords">—</span></div>
+      <div class="card" style="cursor:pointer" onclick="openSamplePoint()"><div class="card-hd"><span class="card-title">Sample point</span><span class="card-sub" id="pt-coords">—</span></div>
         <div class="card-sub" id="pt-station">Nearest NWS: —</div>
       </div>
       <div class="card" onclick="openConditions()"><div class="card-hd"><span class="card-title">Temperature</span><span class="card-sub" id="cond-desc">—</span></div><div class="card-val" id="cond-temp">—<span class="card-unit">°F</span></div><div class="card-sub" id="cond-feels">Feels —</div></div>
@@ -216,6 +224,17 @@
         <div class="card-hd"><span class="card-title">Air Quality</span><span class="card-sub" id="aqi-cat">—</span></div>
         <div class="card-val" id="aqi-val">—</div>
         <div class="card-sub">US AQI · Open-Meteo</div>
+        <div class="aqi-bar-wrap" style="margin-top:8px">
+          <div class="aqi-bar" id="aqi-bar"><i id="aqi-bar-fill"></i><span class="aqi-needle" id="aqi-needle"></span></div>
+          <div class="aqi-bar-lbl"><span>0</span><span>50</span><span>100</span><span>150</span><span>200+</span></div>
+        </div>
+        <div class="metric-row" style="margin-top:6px"><span class="k">PM2.5</span><span class="v" id="aqi-pm25">—</span></div>
+        <div class="metric-row"><span class="k">PM10</span><span class="v" id="aqi-pm10">—</span></div>
+        <div class="metric-row"><span class="k">Ozone</span><span class="v" id="aqi-o3">—</span></div>
+        <div class="card-title" style="margin:8px 0 2px">US AQI · 48h</div>
+        <div class="spark tall"><canvas id="c-aqi" height="72"></canvas></div>
+        <div class="card-title" style="margin:6px 0 2px">PM2.5 µg/m³ · 48h</div>
+        <div class="spark tall"><canvas id="c-pm25" height="56"></canvas></div>
       </div>
     </div>
   </div>
@@ -227,34 +246,68 @@
         <div class="w-label">RADAR / PRIMARY</div>
         <div class="w-tools">
           <select id="windy-layer-1">
-            <option value="radar">Radar</option>
+            <option value="radar" selected>Radar</option>
             <option value="satellite">Satellite</option>
             <option value="wind">Wind</option>
+            <option value="gust">Wind Gusts</option>
             <option value="rain">Rain</option>
+            <option value="rainAccumulations">Rain Accumulation</option>
             <option value="thunder">Thunderstorms</option>
             <option value="temp">Temperature</option>
+            <option value="dewPoint">Dew Point</option>
+            <option value="rh">Humidity</option>
             <option value="clouds">Clouds</option>
+            <option value="lclouds">Low Clouds</option>
+            <option value="mclouds">Med Clouds</option>
+            <option value="hclouds">High Clouds</option>
+            <option value="pressure">Pressure</option>
             <option value="cape">CAPE</option>
-          </select>
+            <option value="snowCover">Snow Cover</option>
+            <option value="snowAccu">Snow Accumulation</option>
+            <option value="waves">Waves</option>
+            <option value="currents">Currents</option>
+            <option value="coCurrent">CO Current</option>
+            <option value="no2">NO₂</option>
+            <option value="so2">SO₂</option>
+            <option value="dustConcentration">Dust</option>
+            <option value="pm2p5">PM2.5</option>
+</select>
         </div>
         <iframe id="windy-iframe-1" src="https://embed.windy.com/embed.html?type=map&location=coordinates&metricRain=in&metricTemp=f&metricWind=mph&zoom=8&overlay=radar&product=radar&level=surface&lat=40.0759&lon=-75.2996" allow="fullscreen" allowfullscreen loading="lazy"></iframe>
       </div>
       <div class="windy-panel windy-right">
         <div class="windy-map">
-          <div class="w-label">CLOUDS / SECONDARY</div>
+          <div class="w-label">WIND / SECONDARY</div>
           <div class="w-tools">
             <select id="windy-layer-2">
-              <option value="clouds" selected>Clouds</option>
-              <option value="radar">Radar</option>
-              <option value="satellite">Satellite</option>
-              <option value="wind">Wind</option>
-              <option value="rain">Rain</option>
-              <option value="thunder">Thunderstorms</option>
-              <option value="temp">Temperature</option>
-              <option value="cape">CAPE</option>
-            </select>
+            <option value="radar">Radar</option>
+            <option value="satellite">Satellite</option>
+            <option value="wind" selected>Wind</option>
+            <option value="gust">Wind Gusts</option>
+            <option value="rain">Rain</option>
+            <option value="rainAccumulations">Rain Accumulation</option>
+            <option value="thunder">Thunderstorms</option>
+            <option value="temp">Temperature</option>
+            <option value="dewPoint">Dew Point</option>
+            <option value="rh">Humidity</option>
+            <option value="clouds">Clouds</option>
+            <option value="lclouds">Low Clouds</option>
+            <option value="mclouds">Med Clouds</option>
+            <option value="hclouds">High Clouds</option>
+            <option value="pressure">Pressure</option>
+            <option value="cape">CAPE</option>
+            <option value="snowCover">Snow Cover</option>
+            <option value="snowAccu">Snow Accumulation</option>
+            <option value="waves">Waves</option>
+            <option value="currents">Currents</option>
+            <option value="coCurrent">CO Current</option>
+            <option value="no2">NO₂</option>
+            <option value="so2">SO₂</option>
+            <option value="dustConcentration">Dust</option>
+            <option value="pm2p5">PM2.5</option>
+</select>
           </div>
-          <iframe id="windy-iframe-2" src="https://embed.windy.com/embed.html?type=map&location=coordinates&metricRain=in&metricTemp=f&metricWind=mph&zoom=8&overlay=clouds&product=gfs&level=surface&lat=40.0759&lon=-75.2996" allow="fullscreen" allowfullscreen loading="lazy"></iframe>
+          <iframe id="windy-iframe-2" src="https://embed.windy.com/embed.html?type=map&location=coordinates&metricRain=in&metricTemp=f&metricWind=mph&zoom=8&overlay=wind&product=ecmwf&level=surface&lat=40.0759&lon=-75.2996" allow="fullscreen" allowfullscreen loading="lazy"></iframe>
         </div>
         <div class="alerts-pane">
           <div class="alerts-pane-hd">
@@ -270,22 +323,22 @@
 <aside class="rail right">
   <div class="right-hd">Status · Forecast</div>
   <div class="rail-body">
-    <div class="card" style="cursor:default"><div class="card-title" style="margin-bottom:6px">7-Day</div><table class="fc-table" id="fc-daily"><thead><tr><th>Day</th><th>Hi</th><th>Lo</th><th>PoP</th></tr></thead><tbody></tbody></table></div>
-    <div class="card" style="cursor:default">
+    <div class="card" style="cursor:pointer" onclick="openForecast10()"><div class="card-title" style="margin-bottom:6px">10-Day Outlook</div><table class="fc-table" id="fc-daily"><thead><tr><th>Day</th><th>Hi</th><th>Lo</th><th>PoP</th></tr></thead><tbody></tbody></table></div>
+    <div class="card" style="cursor:pointer" onclick="openHourlyDetail()">
       <div class="card-title" style="margin-bottom:2px">Temperature °F</div>
-      <div class="spark tall" onclick="openDayDetail(0)"><canvas id="c-temp" height="72"></canvas></div>
+      <div class="spark tall"><canvas id="c-temp" height="72"></canvas></div>
       <div class="card-title" style="margin-bottom:2px">Precip chance %</div>
-      <div class="spark tall" onclick="openDayDetail(0)"><canvas id="c-pop" height="72"></canvas></div>
+      <div class="spark tall"><canvas id="c-pop" height="72"></canvas></div>
       <div class="card-title" style="margin-bottom:2px">Wind mph</div>
-      <div class="spark tall" onclick="openDayDetail(0)"><canvas id="c-wind" height="72"></canvas></div>
+      <div class="spark tall"><canvas id="c-wind" height="72"></canvas></div>
     </div>
-    <div class="card" style="cursor:default">
+    <div class="card" style="cursor:pointer" onclick="openTides()">
       <div class="card-title" style="margin-bottom:6px">NOAA Tides · 8545240</div>
-      <div class="metric-row" onclick="openTides()"><span class="k">Tide MLLW</span><span class="v" id="tide-mllw">—</span></div>
-      <div class="metric-row" onclick="openTides()"><span class="k">Tide air</span><span class="v" id="tide-air">—</span></div>
+      <div class="metric-row"><span class="k">Tide MLLW</span><span class="v" id="tide-mllw">—</span></div>
+      <div class="metric-row"><span class="k">Tide air</span><span class="v" id="tide-air">—</span></div>
     </div>
     <div class="card" style="cursor:default;flex:1">
-      <div class="card-title">Hydrology · USGS Schuylkill</div>
+      <div class="card-title" style="cursor:pointer" onclick="openHydroOverview()">Hydrology · USGS Schuylkill</div>
       <div id="hydro-list"></div>
     </div>
   </div>
@@ -299,6 +352,6 @@
 </div>
 <div class="modal-bg" id="modal-bg" onclick="if(event.target===this)closeModal()"><div class="modal" id="modal"><div class="modal-hd"><span id="modal-title">Detail</span><span class="modal-x" onclick="closeModal()"><i class="fa-solid fa-xmark"></i></span></div><div class="modal-bd" id="modal-body"></div></div></div>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
-<script src="app.js?v=20261121r"></script>
+<script src="app.js?v=20261121s"></script>
 </body>
 </html>
