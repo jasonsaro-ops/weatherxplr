@@ -34,6 +34,15 @@ function fetchT(url, opts={}, ms=12000){
 function esc(s){return String(s==null?"":s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;")}
 function sevClass(s){s=(s||"").toLowerCase();return ["extreme","severe","moderate","minor"].includes(s)?"sev-"+s:"sev-unknown"}
 function sevKey(s){s=(s||"").toLowerCase();return ["extreme","severe","moderate","minor"].includes(s)?s:"unknown"}
+
+// SE-PA / 19428 relevance filter for PA alerts
+const SE_PA_RE = /Philadelphia|Montgomery|Delaware|Chester|Bucks|Berks|Lehigh|Northampton|Lancaster|York|Dauphin|Lebanon|Schuylkill|Conshohocken|Norristown|Pottstown|Reading|King of Prussia|Upper Merion|Lower Merion|Abington|Cheltenham|SEPA|southeastern\s*PA|southeast\s*PA|PHI|Mount Holly/i;
+function isSePaAlert(f){
+  const p=f.properties||{};
+  const area=(p.areaDesc||"")+" "+(p.headline||"")+" "+(p.event||"");
+  return SE_PA_RE.test(area);
+}
+
 function setFeed(id,ok){const el=$("d-"+id);if(el)el.classList.toggle("off",!ok);feed[id]=ok}
 
 function tickClock(){
@@ -210,7 +219,7 @@ async function fetchPointAlerts(){
     alertCache={features:all};
     all.forEach(f=>{ if(f.id) alertCache[f.id]=f.properties||{}; });
     const n=all.length;
-    $("chip-alerts").textContent="ALERTS "+n;
+    n=all.length;$("chip-alerts").textContent="ALERTS "+n; if($("chip-alerts-local")) $("chip-alerts-local").textContent=String(n);
     $("chip-alerts").classList.toggle("hot",n>0);
     const list=$("alerts-list");
     if(list){
@@ -237,11 +246,7 @@ async function fetchPhiAlerts(){
   try{
     const headers={Accept:"application/geo+json","User-Agent":"WeatherXplr/2.0"};
     // NWS does not support ?area=PA reliably (400). Use area queries for PHI CWA states.
-    const urls=[
-      "https://api.weather.gov/alerts/active?area=PA",
-      "https://api.weather.gov/alerts/active?area=NJ",
-      "https://api.weather.gov/alerts/active?area=DE"
-    ];
+    const urls=["https://api.weather.gov/alerts/active?area=PA"];
     const results=await Promise.all(urls.map(u=>fetchT(u,{headers},12000).then(r=>r.ok?r.json():{features:[]}).catch(()=>({features:[]}))));
     const seen=new Set();
     const all=[];
@@ -255,7 +260,7 @@ async function fetchPhiAlerts(){
     }
     const box=$("phi-alerts");
     if(!box) return;
-    if(!all.length) box.innerHTML='<span class="err" style="color:var(--text-dim)">No active alerts (PA/NJ/DE)</span>';
+    if(!all.length) box.innerHTML='<span class="err" style="color:var(--text-dim)">No active SE-PA / 19428 alerts</span>';
     else box.innerHTML=all.slice(0,25).map(f=>{
       const p=f.properties||{};
       return `<div class="alert-item ${sevClass(p.severity)}" style="margin-bottom:4px"><div class="ev">${esc(p.event||"")}</div><div class="hd">${esc((p.headline||"").slice(0,120))}</div></div>`;
@@ -287,50 +292,67 @@ async function fetchOpenMeteo(){
 async function fetchAlerts(){
   try{
     const headers={Accept:"application/geo+json,application/json","User-Agent":"WeatherXplr/2.0 (github.com/jasonsaro-ops)"};
-    const urls=["https://api.weather.gov/alerts/active?area=PA","https://api.weather.gov/alerts/active?area=NJ","https://api.weather.gov/alerts/active?area=DE"];
-    const results=await Promise.all(urls.map(u=>fetchT(u,{headers},12000).then(r=>r.json()).catch(()=>({features:[]}))));
-    const seen=new Set(); const all=[];
-    results.forEach(j=>(j.features||[]).forEach(f=>{
-      const id=f.id||f.properties?.id; if(id&&seen.has(id))return; if(id)seen.add(id); all.push(f);
-    }));
-    const sevRank={extreme:0,severe:1,moderate:2,minor:3,unknown:4};
-    all.sort((a,b)=>(sevRank[sevKey(a.properties?.severity)]??4)-(sevRank[sevKey(b.properties?.severity)]??4));
-    alertCache={features:all};
-    all.forEach(f=>{ if(f.id) alertCache[f.id]=f.properties||{}; });
-    const n=all.length;
+    // Point alerts for 19428 + PA statewide filtered to SE-PA
+    const [pointJ, paJ] = await Promise.all([
+      fetchT(`https://api.weather.gov/alerts/active?point=${sampleLat},${sampleLon}`,{headers},12000).then(r=>r.ok?r.json():{features:[]}).catch(()=>({features:[]})),
+      fetchT("https://api.weather.gov/alerts/active?area=PA",{headers},12000).then(r=>r.ok?r.json():{features:[]}).catch(()=>({features:[]}))
+    ]);
+    const seen=new Set();
+    let all=[];
+    for(const f of (pointJ.features||[])){
+      const id=f.id||(f.properties&&f.properties.id)||Math.random();
+      if(seen.has(id)) continue; seen.add(id); all.push(f);
+    }
+    for(const f of (paJ.features||[])){
+      if(!isSePaAlert(f)) continue;
+      const id=f.id||(f.properties&&f.properties.id)||Math.random();
+      if(seen.has(id)) continue; seen.add(id); all.push(f);
+    }
+    // severity sort
+    const rank={extreme:0,severe:1,moderate:2,minor:3,unknown:4};
+    all.sort((a,b)=> (rank[sevKey(a.properties&&a.properties.severity)]??4)-(rank[sevKey(b.properties&&b.properties.severity)]??4));
+    let n=all.length;
     $("chip-alerts").textContent="ALERTS "+n;
     $("chip-alerts").classList.toggle("hot",n>0);
+    if($("chip-alerts-local")) $("chip-alerts-local").textContent=String(n);
     const list=$("alerts-list");
     if(list){
-      if(!all.length) list.innerHTML='<span class="err" style="color:var(--text-dim)">No active alerts (PA/NJ/DE)</span>';
-      else {
-        list.innerHTML=all.slice(0,40).map(f=>{
-          const p=f.properties||{};
-          const id=esc(f.id||"");
-          return `<div class="alert-item ${sevClass(p.severity)}" data-id="${id}" role="button" tabindex="0">
-            <div class="ev">${esc(p.event||"Alert")}</div>
-            <div class="hd">${esc(p.headline||p.areaDesc||"")}</div>
-          </div>`;
-        }).join("");
-        list.querySelectorAll(".alert-item").forEach(el=>{
-          el.addEventListener("click",()=>openAlert(el.getAttribute("data-id")));
-          el.addEventListener("keydown",e=>{ if(e.key==="Enter"||e.key===" ") openAlert(el.getAttribute("data-id")); });
+      if(!all.length) list.innerHTML='<span class="err" style="color:var(--text-dim)">No active SE-PA / 19428 alerts</span>';
+      else list.innerHTML=all.slice(0,40).map(f=>{
+        const p=f.properties||{};
+        const id=f.id||p.id||"";
+        return `<div class="alert-item ${sevClass(p.severity)}" data-id="${esc(id)}"><div class="ev">${esc(p.event||"Alert")}</div><div class="hd">${esc((p.headline||"").slice(0,160))}</div><div class="alert-meta">${esc((p.areaDesc||"").slice(0,120))}</div></div>`;
+      }).join("");
+      list.querySelectorAll(".alert-item").forEach((el,i)=>{
+        el.addEventListener("click",()=>{
+          const p=all[i].properties||{};
+          openModal(p.event||"Alert", `
+            <div style="color:var(--text-dim);font-size:11px;margin-bottom:8px">${esc(p.areaDesc||"")}</div>
+            <div style="white-space:pre-wrap;font-size:12px;line-height:1.45">${esc(p.description||"")}</div>
+            ${p.instruction?`<div style="margin-top:10px;padding:8px;border-left:3px solid var(--cyan);background:var(--raise)"><strong>Instruction</strong><div style="white-space:pre-wrap;font-size:12px;margin-top:4px">${esc(p.instruction)}</div></div>`:""}
+          `, p.severity);
         });
-      }
+      });
     }
-    // audio for new severe
-    const ids=new Set(all.map(f=>f.id));
-    if(hasBaseline&&audioOn){
+    // Audio on new severe+
+    const ids=new Set(all.map(f=>f.id||(f.properties&&f.properties.id)).filter(Boolean));
+    if(hasBaseline && audioOn){
+      const newSev=new Set();
       all.forEach(f=>{
-        if(!prevAlertIds.has(f.id)){
-          const s=sevKey(f.properties?.severity);
-          if(s==="extreme"||s==="severe") try{playTone(s)}catch(e){}
+        const id=f.id||(f.properties&&f.properties.id);
+        if(id && !prevAlertIds.has(id)){
+          const s=sevKey(f.properties&&f.properties.severity);
+          if(s==="extreme"||s==="severe"||s==="moderate") newSev.add(s);
         }
       });
+      if(newSev.size) playSevs(newSev);
     }
     prevAlertIds=ids; hasBaseline=true;
     setFeed("nws",true);
-  }catch(e){console.warn(e);setFeed("nws",false);if($("alerts-list"))$("alerts-list").innerHTML=`<span class="err">Alert feed down</span>`}
+  }catch(e){
+    console.warn(e);setFeed("nws",false);
+    if($("alerts-list"))$("alerts-list").innerHTML=`<span class="err">Alert feed down</span>`;
+  }
 }
 window.openSPC=function(){
   const note=window.__spcNote||"SPC Day-1";const d=window.__spcDetail||{labels:[],counts:{}};
@@ -507,7 +529,7 @@ window.openAFD=function(){if(!afdFull){openModal("PHI AFD",`<span class="err">No
 ;
 
 window.openAlertsConsole=async function(){
-  openModal("Alerts · Console", `<div id="alerts-console"><span class="err" style="color:var(--text-dim)">Loading regional + point alerts…</span></div>
+  openModal("Alerts · SE-PA / 19428", `<div id="alerts-console"><span class="err" style="color:var(--text-dim)">Loading…</span></div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:12px">
       <button class="btn" onclick="window.open('https://www.spc.noaa.gov/products/outlook/','_blank')">SPC Day 1–3 ↗</button>
       <button class="btn" onclick="window.open('https://www.weather.gov/phi/','_blank')">NWS PHI ↗</button>
@@ -516,53 +538,41 @@ window.openAlertsConsole=async function(){
     </div>`);
   try{
     const headers={Accept:"application/geo+json","User-Agent":"WeatherXplr/2.0"};
-    const [pt, pa, nj, de] = await Promise.all([
+    const [pt, pa] = await Promise.all([
       fetchT(`https://api.weather.gov/alerts/active?point=${sampleLat},${sampleLon}`,{headers},12000).then(r=>r.json()).catch(()=>({features:[]})),
       fetchT("https://api.weather.gov/alerts/active?area=PA",{headers},12000).then(r=>r.json()).catch(()=>({features:[]})),
-      fetchT("https://api.weather.gov/alerts/active?area=NJ",{headers},12000).then(r=>r.json()).catch(()=>({features:[]})),
-      fetchT("https://api.weather.gov/alerts/active?area=DE",{headers},12000).then(r=>r.json()).catch(()=>({features:[]})),
     ]);
     const seen=new Set();
     const merge=[];
-    for(const bag of [pt,pa,nj,de]){
-      for(const f of (bag.features||[])){
-        if(!f.id||seen.has(f.id)) continue;
-        seen.add(f.id);
-        merge.push(f);
-        if(f.id) alertCache[f.id]=f.properties||{};
-      }
+    for(const f of (pt.features||[])){
+      const id=f.id; if(id&&seen.has(id)) continue; if(id) seen.add(id); merge.push(f);
     }
-    alertCache.features=merge;
+    for(const f of (pa.features||[])){
+      if(!isSePaAlert(f)) continue;
+      const id=f.id; if(id&&seen.has(id)) continue; if(id) seen.add(id); merge.push(f);
+    }
     const sevOrder={Extreme:0,Severe:1,Moderate:2,Minor:3,Unknown:4};
-    merge.sort((a,b)=>{
-      const sa=sevOrder[(a.properties||{}).severity]??5;
-      const sb=sevOrder[(b.properties||{}).severity]??5;
-      return sa-sb;
-    });
+    merge.sort((a,b)=>(sevOrder[(a.properties||{}).severity]??5)-(sevOrder[(b.properties||{}).severity]??5));
     const box=$("alerts-console");
     if(!box) return;
     if(!merge.length){
-      box.innerHTML=`<div style="color:var(--text-dim)">No active alerts for sample point or PA / NJ / DE.</div>
-        <div style="font-size:11px;color:var(--text-dim);margin-top:6px">Sample ${sampleLat.toFixed(3)}°, ${sampleLon.toFixed(3)}°</div>`;
+      box.innerHTML=`<div style="color:var(--text-dim)">No active SE-PA / 19428 alerts.</div>`;
       return;
     }
-    box.innerHTML=`<div style="font-size:11px;color:var(--text-dim);margin-bottom:8px">${merge.length} active · point + PA/NJ/DE · sorted by severity</div>`+
+    box.innerHTML=`<div style="font-size:11px;color:var(--text-dim);margin-bottom:8px">${merge.length} active · 19428 point + SE-PA</div>`+
       merge.slice(0,60).map(f=>{
         const p=f.properties||{};
-        const id=esc(f.id||"");
-        return `<div class="alert-item ${sevClass(p.severity)}" data-id="${id}" style="margin-bottom:6px;cursor:pointer">
+        return `<div class="alert-item ${sevClass(p.severity)}" style="margin-bottom:6px">
           <div class="ev">${esc(p.event||"Alert")} · ${esc(p.severity||"")}</div>
           <div class="hd">${esc(p.headline||p.areaDesc||"")}</div>
         </div>`;
       }).join("");
-    box.querySelectorAll(".alert-item").forEach(el=>{
-      el.addEventListener("click",()=>openAlert(el.getAttribute("data-id")));
-    });
   }catch(e){
     const box=$("alerts-console");
     if(box) box.innerHTML=`<span class="err">${esc(String(e.message||e))}</span>`;
   }
 };
+
 
 window.focusMapView=function(){
   closeModal();
@@ -590,14 +600,14 @@ async function refreshAll(){
   await Promise.allSettled([
     fetchOpenMeteo().catch(e=>console.warn(e)),
     fetchPointConditions().catch(e=>console.warn(e)),
-    fetchPointAlerts().catch(e=>console.warn(e)),
+    fetchAlerts().catch(e=>console.warn(e)),
     fetchAQI().catch(e=>console.warn(e)),
     fetchTides().catch(e=>console.warn(e)),
-    fetchKPHL().catch(e=>console.warn(e))
-    ]);
+  ]);
   try{ fetchHydro(); }catch(e){}
-  $("chip-sync") && ($("chip-sync").textContent="SYNC "+new Date().toLocaleTimeString("en-US",{hour12:false}));
+  if($("chip-sync")) $("chip-sync").textContent="SYNC "+new Date().toLocaleTimeString("en-US",{hour12:false,timeZone:"America/New_York"});
 }
+
 
 /* ========== Leaflet + Mesonet NEXRAD (clickable) ========== */
 
@@ -875,56 +885,24 @@ function initRadarAnimControls(){
   });
 }
 
-function focusMapView(){
-  const windyEl = $("windy-dual");
-  if(windyEl) windyEl.classList.remove("on");
-  if(wxMap){
-    try{ wxMap.invalidateSize(true); }catch(e){}
-    wxMap.setView([sampleLat, sampleLon], mapZoom || wxMap.getZoom() || 8, {animate:true});
-  }
-}
+function focusMapView(){ /* NEXRAD map removed */ }
 
 function initRadar(){
-  initWxMap();
-  initRadarAnimControls();
-  document.querySelectorAll(".seg button").forEach(b => b.onclick = () => {
-    document.querySelectorAll(".seg button").forEach(x => x.classList.remove("on"));
-    b.classList.add("on");
-    document.querySelectorAll(".pane").forEach(pn => pn.classList.remove("on"));
-    $("pane-" + b.dataset.pane)?.classList.add("on");
-  });
-  document.querySelectorAll(".nav-tab").forEach(t => t.onclick = () => {
-    document.querySelectorAll(".nav-tab").forEach(x => x.classList.remove("on"));
-    t.classList.add("on");
-    const v = t.dataset.view;
-    const windyEl = $("windy-dual");
-    if(v === "windy"){
-      if(windyEl) windyEl.classList.add("on");
-      initWindyDual();
-    } else {
-      if(windyEl) windyEl.classList.remove("on");
-      if(v === "map") focusMapView();
-      else if(v === "alerts"){
-        document.querySelector('.seg button[data-pane="alerts"]')?.click();
-        openAlertsConsole();
-      }
-    }
-  });
+  // Leaflet NEXRAD map removed — dual Windy is the primary display
+  initWindyDual();
   $("chip-alerts")?.addEventListener("click", ()=>{
-    document.querySelectorAll(".nav-tab").forEach(x=>x.classList.remove("on"));
-    document.querySelector('.nav-tab[data-view="alerts"]')?.classList.add("on");
-    openAlertsConsole();
+    const list=$("alerts-list");
+    if(list) list.scrollIntoView({behavior:"smooth",block:"nearest"});
   });
 }
 
 function initWindyDual(){
   if(window.__windyInited) return;
   window.__windyInited = true;
-  const LAT = sampleLat || 40.0759, LON = sampleLon || -75.2996;
   function setLayer(iframeId, layer){
     const product = (layer === "radar" || layer === "satellite") ? layer : "gfs";
     const el = $(iframeId);
-    if(el) el.src = `https://embed.windy.com/embed.html?type=map&location=coordinates&metricRain=in&metricTemp=f&metricWind=mph&zoom=8&overlay=${layer}&product=${product}&level=surface&lat=${LAT}&lon=${LON}`;
+    if(el) el.src = `https://embed.windy.com/embed.html?type=map&location=coordinates&metricRain=in&metricTemp=f&metricWind=mph&zoom=8&overlay=${layer}&product=${product}&level=surface&lat=${sampleLat}&lon=${sampleLon}`;
   }
   const s1 = $("windy-layer-1"), s2 = $("windy-layer-2");
   if(s1) s1.onchange = () => setLayer("windy-iframe-1", s1.value);
@@ -933,8 +911,23 @@ function initWindyDual(){
 
 function initBrandHome(){
   $("brand-home")?.addEventListener("click", ()=>{
-    setSample(40.0759, -75.2996, "sepa");
+    setSample(40.0759, -75.2996, "z19428");
+    recenterWindy();
+    refreshAll().catch(()=>{});
   });
+}
+function recenterWindy(){
+  const LAT=40.0759, LON=-75.2996;
+  function setSrc(iframeId, layer, product){
+    const el=$(iframeId);
+    if(!el) return;
+    el.src=`https://embed.windy.com/embed.html?type=map&location=coordinates&metricRain=in&metricTemp=f&metricWind=mph&zoom=8&overlay=${layer}&product=${product}&level=surface&lat=${LAT}&lon=${LON}`;
+  }
+  const s1=$("windy-layer-1"), s2=$("windy-layer-2");
+  const l1=s1?s1.value:"radar";
+  const l2=s2?s2.value:"clouds";
+  setSrc("windy-iframe-1", l1, (l1==="radar"||l1==="satellite")?l1:"gfs");
+  setSrc("windy-iframe-2", l2, (l2==="radar"||l2==="satellite")?l2:"gfs");
 }
 
 async function boot(){
@@ -982,18 +975,11 @@ document.addEventListener("DOMContentLoaded", () => {
 function setSample(lat, lon, presetKey){
   sampleLat = +lat; sampleLon = +lon;
   if($("pt-coords")) $("pt-coords").textContent = sampleLat.toFixed(3)+"°, "+sampleLon.toFixed(3)+"°";
-  if(wxMap && sampleMarker){
-    sampleMarker.setLatLng([sampleLat, sampleLon]);
-    wxMap.setView([sampleLat, sampleLon], mapZoom || wxMap.getZoom() || 8, { animate: true });
-  }
-  // Refresh data for new point
   fetchPointConditions().catch(()=>{});
   fetchPointAlerts().catch(()=>{});
   fetchOpenMeteo().catch(()=>{});
-  fetchObs().catch(()=>{});
   fetchAQI().catch(()=>{});
   fetchHydro();
   fetchTides().catch(()=>{});
-  fetchKPHL().catch(()=>{});
 }
 

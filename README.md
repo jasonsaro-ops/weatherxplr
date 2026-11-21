@@ -1,27 +1,25 @@
 # WEATHERXPLR · Conshohocken 19428
 
-Local WeatherXplr board for Conshohocken / ZIP 19428 (PHI CWA).
+Local WeatherXplr board for Conshohocken / ZIP 19428 (SE-PA, PHI CWA).
+
+## Layout
+- **Left rail** — current conditions, gauges, AQI
+- **Center** — dual Windy maps (radar + clouds); secondary column bottom = **NWS alerts** (19428 point + SE-PA only)
+- **Right rail** — 7-day forecast, sparklines, NOAA tides, Schuylkill hydro corridor
 
 ## Features
-- **Windy Dual** — side-by-side Windy embeds (radar + clouds / selectable layers)
-- **NWS alerts** — point + PA / NJ / DE regional
-- **Current conditions** — Open-Meteo blend at sample point + nearest station
-- **Hydro corridor** — Schuylkill River USGS gauges (Reading → Fairmount Dam, including Conshohocken)
-- **NOAA tides** — station 8545240 (Delaware River)
-- Leaflet radar map (IEM NEXRAD, RainViewer, satellite layers)
-- 7-day forecast + sparklines
-- Air quality (Open-Meteo)
-- KPHL status summary
-
-Storm 3D and Visual Crossing worker integration have been removed.
+- Dual Windy embeds (layer selectors)
+- NWS alerts for **19428 + Southeastern PA** only (no NJ/DE)
+- Current conditions (Open-Meteo)
+- Hydro corridor (USGS Schuylkill gauges)
+- NOAA tides (8545240)
+- Click **WEATHERXPLR** (top left) to refresh data and recenter Windy maps on 19428
 
 ## Deploy
-Static site — GitHub Pages works out of the box. No worker required.
+Static site — GitHub Pages. No worker required.
 
 ## Files
 | Path | Role |
 |------|------|
 | `index.html` | Board UI |
-| `app.js` | Data feeds + map + dual Windy |
-
-Default sample: **40.0759, −75.2996** (Conshohocken / SE-PA).
+| `app.js` | Feeds + dual Windy + alerts |

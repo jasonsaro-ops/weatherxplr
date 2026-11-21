@@ -9,7 +9,6 @@
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='14' fill='%233b9eff'/%3E%3Ctext x='16' y='21' text-anchor='middle' fill='%230a0c10' font-size='14' font-family='sans-serif' font-weight='700'%3EW%3C/text%3E%3C/svg%3E">
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet"/>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css"/>
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
 <style>
 :root{--bg:#0a0c10;--panel:#12151c;--raise:#181c26;--raise2:#1e2430;--line:#2a3140;--line-b:#3a4458;--text:#e8edf5;--text-mid:#9aa8bc;--text-dim:#6b7a90;--cyan:#3b9eff;--cyan2:#06b6d4;--amber:#f5a623;--green:#2ecc71;--red:#ef4444;--orange:#f97316;--purple:#a78bfa;--sev-extreme:#ef4444;--sev-severe:#f97316;--sev-moderate:#eab308;--sev-minor:#3b82f6;--font-sans:"IBM Plex Sans",system-ui,sans-serif;--font-mono:"IBM Plex Mono",ui-monospace,monospace;--r:6px;--hdr:44px}
 *{box-sizing:border-box;margin:0;padding:0}html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--font-sans);font-size:12px;overflow:hidden}
@@ -170,14 +169,21 @@
 .vc-curr .card-val{font-size:22px}
 
 /* Dual Windy view */
-#windy-dual{position:absolute;inset:0;z-index:20;display:none;background:var(--bg);flex-direction:column}
-#windy-dual.on{display:flex}
+#windy-dual{position:relative;flex:1;display:flex;flex-direction:column;min-height:0;background:var(--bg)}
 .windy-split{flex:1;display:grid;grid-template-columns:1fr 1fr;min-height:0;gap:2px;background:var(--line)}
-.windy-panel{position:relative;min-height:0;background:#05070c}
-.windy-panel iframe{width:100%;height:100%;border:none}
+.windy-panel{position:relative;min-height:0;background:#05070c;display:flex;flex-direction:column}
+.windy-panel iframe{width:100%;flex:1;border:none;min-height:0}
 .windy-panel .w-tools{position:absolute;top:10px;right:10px;z-index:5;display:flex;gap:6px;align-items:center}
 .windy-panel select{background:rgba(18,21,28,.92);color:var(--text);border:1px solid var(--line-b);padding:6px 10px;font-family:var(--font-mono);font-size:11px;border-radius:6px;cursor:pointer}
 .windy-panel .w-label{position:absolute;top:10px;left:10px;z-index:5;background:rgba(18,21,28,.9);border:1px solid var(--line-b);color:var(--cyan);font-family:var(--font-mono);font-size:10px;letter-spacing:.08em;padding:4px 8px;border-radius:4px}
+.windy-right{display:flex;flex-direction:column;min-height:0}
+.windy-right .windy-map{flex:1;position:relative;min-height:0;display:flex;flex-direction:column}
+.windy-right .windy-map iframe{width:100%;flex:1;border:none;min-height:0}
+.alerts-pane{flex:0 0 42%;min-height:160px;max-height:48%;overflow:hidden;display:flex;flex-direction:column;background:var(--panel);border-top:1px solid var(--line)}
+.alerts-pane-hd{display:flex;align-items:center;justify-content:space-between;padding:6px 10px;border-bottom:1px solid var(--line);flex-shrink:0}
+.alerts-pane-hd h3{font-family:var(--font-mono);font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--cyan);margin:0}
+.alerts-pane-body{flex:1;overflow-y:auto;padding:6px 8px;min-height:0}
+.alerts-pane-body .alert-item{margin-bottom:6px}
 
 </style>
 </head>
@@ -185,15 +191,13 @@
 <div id="boot"><div class="boot-box"><div class="boot-logo"><i class="fa-solid fa-satellite-dish"></i></div><div class="boot-title">WEATHERXPLR</div><div class="boot-sub">CONSHOHOCKEN 19428 · PHI CWA</div><div class="boot-bar"><div class="boot-prog" id="boot-prog"></div></div><div class="boot-st" id="boot-st">INITIALIZING…</div></div></div>
 <div id="app">
 <header class="top">
-  <div class="brand" id="brand-home" title="Recenter · NWS Mount Holly (PHI)" style="cursor:pointer"><div class="brand-mark"></div><div><div class="brand-name">WEATHERXPLR</div><div class="brand-tag">19428 · Conshohocken</div></div></div>
-  <div class="nav-tabs"><div class="nav-tab on" data-view="map">Map</div><div class="nav-tab" data-view="windy">Windy Dual</div><div class="nav-tab" data-view="alerts">Alerts</div></div>
+  <div class="brand" id="brand-home" title="Refresh · Recenter 19428" style="cursor:pointer"><div class="brand-mark"></div><div><div class="brand-name">WEATHERXPLR</div><div class="brand-tag">19428 · Conshohocken</div></div></div>
   <div class="top-mid"><div class="clock" id="clock">--:--:--</div><div class="chip live" id="chip-status">ONLINE</div><div class="chip" id="chip-alerts">ALERTS 0</div><div class="chip btn" id="btn-audio"><i class="fa-solid fa-volume-xmark" id="audio-ico"></i> <span id="audio-lbl">TONES</span></div></div>
   <div class="top-right"><div class="chip">CYCLE <b id="cd" style="color:var(--text)">120</b>s</div><div class="chip" id="chip-sync">SYNC --</div></div>
 </header>
 <div class="main">
 <aside class="rail">
-  <div class="seg"><button type="button" class="on" data-pane="cond">Point</button><button type="button" data-pane="alerts">Alerts</button></div>
-  <div class="rail-body">
+  <div class="rail-body" style="padding-top:8px">
     <div class="pane on" id="pane-cond">
       <div class="card" style="cursor:default"><div class="card-hd"><span class="card-title">Sample point</span><span class="card-sub" id="pt-coords">—</span></div>
         <div class="card-sub" id="pt-station">Nearest NWS: —</div>
@@ -208,10 +212,13 @@
         <div class="metric-row"><span class="k">Clouds</span><span class="v" id="m-cloud">—</span></div>
         <div class="metric-row"><span class="k">Precip</span><span class="v" id="m-precip">—</span></div>
       </div>
-      <div class="card" style="cursor:default"><div class="card-title" style="margin-bottom:6px">Nearest station OBS</div><div id="pt-obs">—</div></div>
+      <div class="card" style="margin-top:8px;cursor:pointer" onclick="openAQI()">
+        <div class="card-hd"><span class="card-title">Air Quality</span><span class="card-sub" id="aqi-cat">—</span></div>
+        <div class="card-val" id="aqi-val">—</div>
+        <div class="card-sub">US AQI · Open-Meteo</div>
+      </div>
     </div>
-    <div class="pane" id="pane-alerts"><div id="alerts-list"></div></div>
-    </div>
+  </div>
 </aside>
 <section class="stage">
   <div id="windy-dual">
@@ -232,74 +239,37 @@
         </div>
         <iframe id="windy-iframe-1" src="https://embed.windy.com/embed.html?type=map&location=coordinates&metricRain=in&metricTemp=f&metricWind=mph&zoom=8&overlay=radar&product=radar&level=surface&lat=40.0759&lon=-75.2996" allow="fullscreen" allowfullscreen loading="lazy"></iframe>
       </div>
-      <div class="windy-panel">
-        <div class="w-label">CLOUDS / SECONDARY</div>
-        <div class="w-tools">
-          <select id="windy-layer-2">
-            <option value="clouds" selected>Clouds</option>
-            <option value="radar">Radar</option>
-            <option value="satellite">Satellite</option>
-            <option value="wind">Wind</option>
-            <option value="rain">Rain</option>
-            <option value="thunder">Thunderstorms</option>
-            <option value="temp">Temperature</option>
-            <option value="cape">CAPE</option>
-          </select>
+      <div class="windy-panel windy-right">
+        <div class="windy-map">
+          <div class="w-label">CLOUDS / SECONDARY</div>
+          <div class="w-tools">
+            <select id="windy-layer-2">
+              <option value="clouds" selected>Clouds</option>
+              <option value="radar">Radar</option>
+              <option value="satellite">Satellite</option>
+              <option value="wind">Wind</option>
+              <option value="rain">Rain</option>
+              <option value="thunder">Thunderstorms</option>
+              <option value="temp">Temperature</option>
+              <option value="cape">CAPE</option>
+            </select>
+          </div>
+          <iframe id="windy-iframe-2" src="https://embed.windy.com/embed.html?type=map&location=coordinates&metricRain=in&metricTemp=f&metricWind=mph&zoom=8&overlay=clouds&product=gfs&level=surface&lat=40.0759&lon=-75.2996" allow="fullscreen" allowfullscreen loading="lazy"></iframe>
         </div>
-        <iframe id="windy-iframe-2" src="https://embed.windy.com/embed.html?type=map&location=coordinates&metricRain=in&metricTemp=f&metricWind=mph&zoom=8&overlay=clouds&product=gfs&level=surface&lat=40.0759&lon=-75.2996" allow="fullscreen" allowfullscreen loading="lazy"></iframe>
+        <div class="alerts-pane">
+          <div class="alerts-pane-hd">
+            <h3>NWS Alerts · SE-PA / 19428</h3>
+            <span class="chip" id="chip-alerts-local" style="font-size:9px">0</span>
+          </div>
+          <div class="alerts-pane-body" id="alerts-list"><span style="color:var(--text-dim)">Loading alerts…</span></div>
+        </div>
       </div>
     </div>
   </div>
-
-  <div class="stage-split">
-    <div class="map-frame">
-      <div class="model-bar">
-        <div class="model-chip on" data-layer="radar">US NEXRAD</div>
-        <div class="model-chip" data-layer="global">Global</div>
-        <div class="model-chip" data-layer="eet">Echo Tops</div>
-        <div class="model-chip" data-layer="mrms">MRMS HSR</div>
-        <div class="model-chip" data-layer="velocity">Velocity</div>
-        <div class="model-chip" data-layer="satellite">Sat IR</div>
-        <div class="model-chip" data-layer="qpe">QPE</div>
-      </div>
-      <div class="radar-anim" id="radar-anim">
-        <button type="button" id="btn-radar-play" title="Play / Pause loop"><i class="fa-solid fa-play"></i></button>
-        <button type="button" id="btn-radar-live" title="Jump to live">LIVE</button>
-        <span class="ra-label" id="radar-age">LIVE</span>
-      </div>
-      <div id="wx-map" role="application" aria-label="Radar map"></div>
-      <div class="map-tools">
-        <button type="button" class="map-btn" id="btn-layers" title="Layers"><i class="fa-solid fa-layer-group"></i></button>
-        <button type="button" class="map-btn" id="btn-home" title="Home"><i class="fa-solid fa-crosshairs"></i></button>
-      </div>
-      <div class="layer-pop" id="layer-pop">
-        <h4>IEM OGC / TMS</h4>
-        <label class="ly-row"><input type="radio" name="rad" id="ly-nexrad" value="radar" checked> US NEXRAD n0q</label>
-        <label class="ly-row"><input type="radio" name="rad" id="ly-global" value="global"> Global RainViewer</label>
-        <label class="ly-row"><input type="radio" name="rad" id="ly-eet" value="eet"> Echo Tops (EET)</label>
-        <label class="ly-row"><input type="radio" name="rad" id="ly-mrms" value="mrms"> MRMS Hybrid Scan</label>
-        <h4>Other US</h4>
-        <label class="ly-row"><input type="checkbox" id="ly-velocity"> Base Velocity</label>
-        <label class="ly-row"><input type="checkbox" id="ly-sat"> GOES IR</label>
-        <label class="ly-row"><input type="checkbox" id="ly-qpe"> QPE 1h</label>
-        <div style="font-size:10px;color:var(--text-dim);padding:4px 6px;line-height:1.35">Iowa State Mesonet OGC/TMS · mesonet.agron.iastate.edu/ogc</div>
-      </div>
-    </div>
-  </div>
-  <div class="time-strip"><span class="t-lab" id="t-lab">LIVE</span><div class="time-track"><div class="time-fill" id="time-fill"></div></div></div>
 </section>
-
 <aside class="rail right">
   <div class="right-hd">Status · Forecast</div>
   <div class="rail-body">
-    <div class="card" style="cursor:default">
-      <div class="card-hd"><span class="card-title">KPHL Status</span><span class="card-sub">NWS</span></div>
-      <div class="card-val" id="kphl-temp-r">—<span class="card-unit">°F</span></div>
-      <div class="card-sub" id="kphl-desc-r">Philadelphia Intl</div>
-      <div class="metric-row" style="margin-top:6px"><span class="k">Wind</span><span class="v" id="kphl-wind-r">—</span></div>
-      <div class="metric-row"><span class="k">Vis</span><span class="v" id="kphl-vis-r">—</span></div>
-      <div class="metric-row"><span class="k">Wx</span><span class="v" id="kphl-wx-r">—</span></div>
-    </div>
     <div class="card" style="cursor:default"><div class="card-title" style="margin-bottom:6px">7-Day</div><table class="fc-table" id="fc-daily"><thead><tr><th>Day</th><th>Hi</th><th>Lo</th><th>PoP</th></tr></thead><tbody></tbody></table></div>
     <div class="card" style="cursor:default">
       <div class="card-title" style="margin-bottom:2px">Temperature °F</div>
@@ -309,15 +279,13 @@
       <div class="card-title" style="margin-bottom:2px">Wind mph</div>
       <div class="spark tall" onclick="openDayDetail(0)"><canvas id="c-wind" height="72"></canvas></div>
     </div>
-    <div class="card" onclick="openAQI()">
-      <div class="card-hd"><span class="card-title">Air Quality</span><span class="card-sub" id="aqi-cat">—</span></div>
-      <div class="card-val" id="aqi-val">—</div>
-      <div class="card-sub">US AQI · Open-Meteo</div>
-      <div class="metric-row" style="margin-top:6px" onclick="event.stopPropagation();openTides()"><span class="k">Tide MLLW</span><span class="v" id="tide-mllw">—</span></div>
-      <div class="metric-row" onclick="event.stopPropagation();openTides()"><span class="k">Tide air</span><span class="v" id="tide-air">—</span></div>
+    <div class="card" style="cursor:default">
+      <div class="card-title" style="margin-bottom:6px">NOAA Tides · 8545240</div>
+      <div class="metric-row" onclick="openTides()"><span class="k">Tide MLLW</span><span class="v" id="tide-mllw">—</span></div>
+      <div class="metric-row" onclick="openTides()"><span class="k">Tide air</span><span class="v" id="tide-air">—</span></div>
     </div>
-    <div class="card hydro-compact" style="cursor:default">
-      <div class="card-title">Hydrology · USGS</div>
+    <div class="card" style="cursor:default;flex:1">
+      <div class="card-title">Hydrology · USGS Schuylkill</div>
       <div id="hydro-list"></div>
     </div>
   </div>
@@ -325,13 +293,12 @@
 </div>
 <footer class="foot">
   <div class="feeds"><span class="fd"><span class="d" id="d-nws"></span>NWS</span><span class="fd"><span class="d" id="d-om"></span>OM</span><span class="fd"><span class="d" id="d-aqi"></span>AQ</span><span class="fd"><span class="d" id="d-hydro"></span>USGS</span><span class="fd"><span class="d" id="d-tides"></span>TIDES</span></div>
-  <div>PHI CWA · HRRR · REFS · NWS</div>
+  <div>PHI CWA · SE-PA · 19428</div>
   <div>WEATHERXPLR DISPATCH · 120s</div>
 </footer>
 </div>
 <div class="modal-bg" id="modal-bg" onclick="if(event.target===this)closeModal()"><div class="modal" id="modal"><div class="modal-hd"><span id="modal-title">Detail</span><span class="modal-x" onclick="closeModal()"><i class="fa-solid fa-xmark"></i></span></div><div class="modal-bd" id="modal-body"></div></div></div>
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
-<script src="app.js?v=20261115h"></script>
+<script src="app.js?v=20261121r"></script>
 </body>
 </html>
