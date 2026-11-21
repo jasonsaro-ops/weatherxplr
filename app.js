@@ -253,6 +253,26 @@ function renderSparks(){
   sparkChart("c-temp",labels,temps,"#f5a623","°F");sparkChart("c-pop",labels,pops,"#3b9eff","%");sparkChart("c-wind",labels,winds,"#06b6d4","mph");
 }
 
+/** Left-rail 48h history charts (pressure, RH, precip) to fill empty space */
+function renderLeftHistory(){
+  if(!omData||!omData.hourly)return;
+  const h=omData.hourly,now=Date.now();
+  const labels=[],pres=[],rhs=[],precs=[],temps=[];
+  for(let i=0;i<h.time.length&&labels.length<48;i++){
+    const t=new Date(h.time[i]);
+    if(t.getTime()<now-3600000) continue;
+    labels.push(String(t.getHours()).padStart(2,"0"));
+    temps.push(h.temperature_2m ? h.temperature_2m[i] : null);
+    pres.push(h.pressure_msl ? h.pressure_msl[i] : null);
+    rhs.push(h.relative_humidity_2m ? h.relative_humidity_2m[i] : null);
+    precs.push(h.precipitation ? h.precipitation[i] : null);
+  }
+  sparkChart("c-left-temp", labels, temps, "#f5a623", "°F");
+  sparkChart("c-left-pres", labels, pres, "#2ecc71", "hPa");
+  sparkChart("c-left-rh", labels, rhs, "#3b9eff", "%");
+  sparkChart("c-left-precip", labels, precs, "#a78bfa", "in");
+}
+
 async function fetchPointConditions(){
   const lat=sampleLat, lon=sampleLon;
   try{
@@ -306,7 +326,7 @@ async function fetchPointAlerts(){
     alertCache={features:all};
     all.forEach(f=>{ if(f.id) alertCache[f.id]=f.properties||{}; });
     const n=all.length;
-    n=all.length;$("chip-alerts").textContent="ALERTS "+n; if($("chip-alerts-local")) $("chip-alerts-local").textContent=String(n);
+    $("chip-alerts").textContent="ALERTS "+n; if($("chip-alerts-local")) $("chip-alerts-local").textContent=String(n);
     $("chip-alerts").classList.toggle("hot",n>0);
     const list=$("alerts-list");
     if(list){
@@ -359,7 +379,7 @@ async function fetchOpenMeteo(){
   try{
     const u=`https://api.open-meteo.com/v1/forecast?latitude=${LAT}&longitude=${LON}`+
       `&current=temperature_2m,relative_humidity_2m,apparent_temperature,precipitation,weather_code,cloud_cover,pressure_msl,wind_speed_10m,wind_direction_10m,wind_gusts_10m`+
-      `&hourly=temperature_2m,precipitation_probability,wind_speed_10m`+
+      `&hourly=temperature_2m,relative_humidity_2m,precipitation_probability,precipitation,pressure_msl,wind_speed_10m,wind_gusts_10m,cloud_cover`+
       `&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max,precipitation_sum,wind_speed_10m_max,wind_gusts_10m_max,sunrise,sunset`+
       `&temperature_unit=fahrenheit&wind_speed_unit=mph&precipitation_unit=inch&timezone=America%2FNew_York&forecast_days=10`;
     const r=await fetchT(u,{},15000);
@@ -369,6 +389,7 @@ async function fetchOpenMeteo(){
     renderConditions();
     renderForecast();
     renderSparks();
+    renderLeftHistory();
     renderModelCards();
   }catch(e){
     console.warn("Open-Meteo",e);
@@ -640,21 +661,28 @@ async function fetchHydro(){
 window.openHydro=async function(id,name){
   openModal(`USGS · ${name}`,`<div id="hydro-detail"><span style="color:var(--text-dim)">Loading NWIS…</span></div>`);
   try{
-    const j = await fetchT(`https://waterservices.usgs.gov/nwis/iv/?format=json&sites=${id}&siteStatus=all`,{},15000).then(r=>r.json());
+    // 7-day instantaneous series for charts + latest values
+    const j = await fetchT(
+      `https://waterservices.usgs.gov/nwis/iv/?format=json&sites=${id}&parameterCd=00060,00065,00010,00045&period=P7D&siteStatus=all`,
+      {}, 20000
+    ).then(r=>r.json());
     const series = (j.value&&j.value.timeSeries)||[];
     if(!series.length){
       $("hydro-detail").innerHTML=`<div style="color:var(--text-dim)">No instantaneous values for site ${esc(id)}.</div>
         <p style="margin-top:10px"><a style="color:var(--cyan)" href="https://waterdata.usgs.gov/monitoring-location/USGS-${id}/" target="_blank" rel="noopener">Open USGS monitoring page ↗</a></p>`;
       return;
     }
-    let rows="";
+
+    const byCode = {};
+    let rows = "";
     for(const t of series){
-      const pcode = t.variable.variableCode[0].value;
-      const vname = t.variable.variableName||pcode;
-      const unit = (t.variable.unit&&t.variable.unit.unitCode)||"";
-      const vals = t.values&&t.values[0]&&t.values[0].value;
-      const last = vals&&vals.length?vals[vals.length-1]:null;
-      if(!last) continue;
+      const pcode = t.variable && t.variable.variableCode && t.variable.variableCode[0] && t.variable.variableCode[0].value;
+      const vname = (t.variable && t.variable.variableName) || pcode;
+      const unit = (t.variable && t.variable.unit && t.variable.unit.unitCode) || "";
+      const vals = t.values && t.values[0] && t.values[0].value;
+      if(!pcode || !vals || !vals.length) continue;
+      byCode[pcode] = { name: vname, unit, vals };
+      const last = vals[vals.length-1];
       let display = last.value;
       if(pcode==="00010" && last.value!=null && Number(last.value)>-90000){
         display = (Number(last.value)*9/5+32).toFixed(1)+" °F (water)";
@@ -664,13 +692,75 @@ window.openHydro=async function(id,name){
         display = `${last.value} ${unit}`;
       }
       const when = (last.dateTime||"").replace("T"," ").slice(0,19);
-      rows += `<div class="metric-row"><span class="k">${esc(vname.slice(0,42))}</span><span class="v">${esc(String(display))}</span></div>
+      rows += `<div class="metric-row"><span class="k">${esc(String(vname).slice(0,42))}</span><span class="v">${esc(String(display))}</span></div>
         <div style="font-size:9px;color:var(--text-dim);margin:-4px 0 8px 0">${esc(when)}</div>`;
     }
-    $("hydro-detail").innerHTML = rows + `
-      <p style="margin-top:12px"><a style="color:var(--cyan)" href="https://waterdata.usgs.gov/monitoring-location/USGS-${id}/" target="_blank" rel="noopener">USGS monitoring location ${esc(id)} ↗</a></p>
+
+    // Chart slots for discharge (00060) and stage (00065)
+    const chartHtml = `
+      <div class="card-title" style="margin:12px 0 4px">7-day streamflow / stage</div>
+      <div style="display:grid;gap:8px">
+        <div>
+          <div style="font-size:9px;color:var(--text-dim);margin-bottom:2px">Discharge (cfs)</div>
+          <div class="spark tall" style="height:110px"><canvas id="hydro-chart-flow" height="110"></canvas></div>
+        </div>
+        <div>
+          <div style="font-size:9px;color:var(--text-dim);margin-bottom:2px">Gage height (ft)</div>
+          <div class="spark tall" style="height:110px"><canvas id="hydro-chart-stage" height="110"></canvas></div>
+        </div>
+      </div>`;
+
+    $("hydro-detail").innerHTML = rows + chartHtml + `
+      <p style="margin-top:12px"><a style="color:var(--cyan)" href="https://waterdata.usgs.gov/monitoring-location/USGS-${id}/#period=P7D&dataTypeId=continuous-00060-0&showMedian=true" target="_blank" rel="noopener">USGS monitoring location ${esc(id)} ↗</a></p>
       <p style="font-size:10px;color:var(--text-dim);margin-top:6px">NWIS instantaneous values · provisional data subject to revision</p>`;
+
+    // Build charts after DOM is ready
+    requestAnimationFrame(()=>{
+      const makeHydroSeries = (pcode, convertFn) => {
+        const s = byCode[pcode];
+        if(!s || !s.vals || !s.vals.length) return null;
+        // Downsample to ~80 points for readability
+        const step = Math.max(1, Math.floor(s.vals.length / 80));
+        const labels = [], data = [];
+        for(let i=0;i<s.vals.length;i+=step){
+          const v = s.vals[i];
+          if(v.value==null || Number(v.value)<=-90000) continue;
+          const d = new Date(v.dateTime);
+          labels.push((d.getMonth()+1)+"/"+d.getDate()+" "+String(d.getHours()).padStart(2,"0"));
+          data.push(convertFn ? convertFn(Number(v.value)) : Number(v.value));
+        }
+        return { labels, data };
+      };
+
+      const flow = makeHydroSeries("00060");
+      const stage = makeHydroSeries("00065");
+
+      if(flow && flow.data.length){
+        sparkChart("hydro-chart-flow", flow.labels, flow.data, "#3b9eff", "cfs");
+        // Enable x axis labels lightly for hydro modal
+        try{
+          const ch = charts["hydro-chart-flow"];
+          if(ch){
+            ch.options.scales.x = { display: true, ticks: { maxTicksLimit: 6, color: "#6b7a90", font: { size: 9 } }, grid: { display: false } };
+            ch.options.scales.y = { display: true, ticks: { maxTicksLimit: 5, color: "#6b7a90", font: { size: 9 } }, grid: { color: "rgba(42,49,64,.5)" } };
+            ch.update("none");
+          }
+        }catch(_){}
+      }
+      if(stage && stage.data.length){
+        sparkChart("hydro-chart-stage", stage.labels, stage.data, "#06b6d4", "ft");
+        try{
+          const ch = charts["hydro-chart-stage"];
+          if(ch){
+            ch.options.scales.x = { display: true, ticks: { maxTicksLimit: 6, color: "#6b7a90", font: { size: 9 } }, grid: { display: false } };
+            ch.options.scales.y = { display: true, ticks: { maxTicksLimit: 5, color: "#6b7a90", font: { size: 9 } }, grid: { color: "rgba(42,49,64,.5)" } };
+            ch.update("none");
+          }
+        }catch(_){}
+      }
+    });
   }catch(e){
+    console.warn("openHydro", e);
     $("hydro-detail").innerHTML=`<span class="err">Failed to load NWIS data</span>
       <p style="margin-top:10px"><a style="color:var(--cyan)" href="https://waterdata.usgs.gov/monitoring-location/USGS-${id}/" target="_blank" rel="noopener">Open USGS page ↗</a></p>`;
   }
