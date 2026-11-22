@@ -67,7 +67,7 @@ function tickClock(){
 
 function arcGauge(value,min,max,color,label,unit,disp){
   const pct=value==null||isNaN(value)?0:Math.max(0,Math.min(1,(value-min)/(max-min)));
-  const start=-135,sweep=270,r=42,cx=50,cy=50,toRad=d=>(d*Math.PI)/180;
+  const start=-135,sweep=270,r=36,cx=50,cy=44,toRad=d=>(d*Math.PI)/180;
   const angle=start+sweep*pct;
   const x1=cx+r*Math.cos(toRad(start)),y1=cy+r*Math.sin(toRad(start));
   const x2=cx+r*Math.cos(toRad(start+sweep)),y2=cy+r*Math.sin(toRad(start+sweep));
@@ -77,10 +77,10 @@ function arcGauge(value,min,max,color,label,unit,disp){
   const fill=value==null?"":`M ${x1} ${y1} A ${r} ${r} 0 ${large} 1 ${nx} ${ny}`;
   const shown=disp!=null?disp:(value==null?"—":Math.round(value));
   return `<div class="g-tile" onclick="openConditions()"><div class="lbl">${esc(label)}</div>
-    <svg viewBox="0 0 100 78"><path d="${track}" fill="none" stroke="rgba(148,163,184,.2)" stroke-width="8" stroke-linecap="round"/>
-    ${fill?`<path d="${fill}" fill="none" stroke="${color}" stroke-width="8" stroke-linecap="round"/>`:""}
-    <text x="50" y="52" text-anchor="middle" fill="#f8fafc" font-size="15" font-family="IBM Plex Mono,monospace" font-weight="600">${esc(String(shown))}</text>
-    <text x="50" y="66" text-anchor="middle" fill="#6b7a90" font-size="8" font-family="IBM Plex Mono,monospace">${esc(unit)}</text></svg></div>`;
+    <svg viewBox="0 0 100 62"><path d="${track}" fill="none" stroke="rgba(148,163,184,.2)" stroke-width="7" stroke-linecap="round"/>
+    ${fill?`<path d="${fill}" fill="none" stroke="${color}" stroke-width="7" stroke-linecap="round"/>`:""}
+    <text x="50" y="46" text-anchor="middle" fill="#f8fafc" font-size="14" font-family="IBM Plex Mono,monospace" font-weight="600">${esc(String(shown))}</text>
+    <text x="50" y="58" text-anchor="middle" fill="#6b7a90" font-size="7" font-family="IBM Plex Mono,monospace">${esc(unit)}</text></svg></div>`;
 }
 
 function openModal(title,html,sev){$("modal-title").textContent=title;$("modal-body").innerHTML=html;$("modal").className="modal"+(sev?" "+sevClass(sev):"");$("modal-bg").classList.add("open")}

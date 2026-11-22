@@ -204,6 +204,19 @@
 .aqi-bar-lbl{display:flex;justify-content:space-between;font-size:8px;color:var(--text-dim);margin-top:2px;font-family:var(--font-mono)}
 .spark.tall{height:44px;position:relative}
 
+
+.left-head-row{display:flex;align-items:center;gap:8px}
+.left-head-temp{flex-shrink:0;min-width:64px}
+.left-head-meta{flex:1;min-width:0;cursor:pointer}
+.left-head-meta:hover .card-title{color:var(--cyan)}
+.rail .gauge-grid{gap:3px;margin:2px 0}
+.rail .g-tile{padding:2px 2px}
+.rail .g-tile svg{max-width:72px}
+.rail .card{margin-bottom:3px}
+.rail .spark.tall{height:34px}
+.rail .aqi-bar-wrap{margin-top:2px}
+.rail .aqi-bar{height:7px}
+
 </style>
 </head>
 <body>
@@ -216,15 +229,24 @@
 </header>
 <div class="main">
 <aside class="rail">
-  <div class="rail-body" style="padding-top:4px">
+  <div class="rail-body" style="padding-top:2px">
     <div class="pane on" id="pane-cond">
-      <div class="card" style="cursor:pointer;padding:4px 6px;margin-bottom:4px" onclick="openSamplePoint()">
-        <div class="card-hd" style="margin-bottom:1px"><span class="card-title">Sample point</span><span class="card-sub" id="pt-coords">—</span></div>
-        <div class="card-sub" id="pt-station" style="font-size:8px;line-height:1.2">Nearest NWS: —</div>
+      <!-- Compact header: sample + temp in one row (frees vertical space for graphs) -->
+      <div class="card left-head" style="cursor:pointer;padding:4px 6px;margin-bottom:3px" onclick="openConditions()">
+        <div class="left-head-row">
+          <div class="left-head-temp">
+            <span class="card-val" id="cond-temp" style="font-size:22px;line-height:1">—<span class="card-unit">°F</span></span>
+            <div class="card-sub" id="cond-feels" style="font-size:8px;margin-top:0">Feels —</div>
+          </div>
+          <div class="left-head-meta" onclick="event.stopPropagation();openSamplePoint()">
+            <div class="card-title" style="margin:0">Sample · <span id="pt-coords">—</span></div>
+            <div class="card-sub" id="cond-desc" style="font-size:8px;margin:0">—</div>
+            <div class="card-sub" id="pt-station" style="font-size:7px;margin:0;opacity:.8">Nearest NWS: —</div>
+          </div>
+        </div>
       </div>
-      <div class="card" onclick="openConditions()"><div class="card-hd"><span class="card-title">Temperature</span><span class="card-sub" id="cond-desc">—</span></div><div class="card-val" id="cond-temp">—<span class="card-unit">°F</span></div><div class="card-sub" id="cond-feels">Feels —</div></div>
       <div class="gauge-grid" id="gauge-grid"></div>
-      <div class="card" style="margin-top:4px" onclick="openConditions()">
+      <div class="card" style="margin-top:3px;padding:3px 6px" onclick="openConditions()">
         <div class="metric-row"><span class="k">Wind</span><span class="v" id="m-wind">—</span></div>
         <div class="metric-row"><span class="k">Gusts</span><span class="v" id="m-gust">—</span></div>
         <div class="metric-row"><span class="k">Pressure</span><span class="v" id="m-pres">—</span></div>
@@ -232,32 +254,34 @@
         <div class="metric-row"><span class="k">Clouds</span><span class="v" id="m-cloud">—</span></div>
         <div class="metric-row"><span class="k">Precip</span><span class="v" id="m-precip">—</span></div>
       </div>
-      <div class="card" style="margin-top:4px;cursor:pointer" onclick="openAQI()">
-        <div class="card-hd"><span class="card-title">Air Quality</span><span class="card-sub" id="aqi-cat">—</span></div>
-        <div class="card-val" id="aqi-val">—</div>
-        <div class="card-sub">US AQI · Open-Meteo</div>
-        <div class="aqi-bar-wrap" style="margin-top:4px">
+      <div class="card" style="margin-top:3px;cursor:pointer;padding:4px 6px" onclick="openAQI()">
+        <div class="card-hd" style="margin-bottom:2px"><span class="card-title">Air Quality</span><span class="card-sub" id="aqi-cat">—</span></div>
+        <div style="display:flex;align-items:baseline;gap:8px">
+          <div class="card-val" id="aqi-val" style="font-size:18px">—</div>
+          <div class="card-sub" style="margin:0">US AQI · Open-Meteo</div>
+        </div>
+        <div class="aqi-bar-wrap" style="margin-top:3px">
           <div class="aqi-bar" id="aqi-bar"><i id="aqi-bar-fill"></i><span class="aqi-needle" id="aqi-needle"></span></div>
           <div class="aqi-bar-lbl"><span>0</span><span>50</span><span>100</span><span>150</span><span>200+</span></div>
         </div>
-        <div class="metric-row" style="margin-top:3px"><span class="k">PM2.5</span><span class="v" id="aqi-pm25">—</span></div>
+        <div class="metric-row" style="margin-top:2px"><span class="k">PM2.5</span><span class="v" id="aqi-pm25">—</span></div>
         <div class="metric-row"><span class="k">PM10</span><span class="v" id="aqi-pm10">—</span></div>
         <div class="metric-row"><span class="k">Ozone</span><span class="v" id="aqi-o3">—</span></div>
-        <div class="card-title" style="margin:4px 0 1px">US AQI · 48h</div>
-        <div class="spark tall"><canvas id="c-aqi" height="40"></canvas></div>
-        <div class="card-title" style="margin:3px 0 1px">PM2.5 µg/m³ · 48h</div>
-        <div class="spark tall"><canvas id="c-pm25" height="36"></canvas></div>
+        <div class="card-title" style="margin:3px 0 1px">US AQI · 48h</div>
+        <div class="spark tall"><canvas id="c-aqi" height="32"></canvas></div>
+        <div class="card-title" style="margin:2px 0 1px">PM2.5 µg/m³ · 48h</div>
+        <div class="spark tall"><canvas id="c-pm25" height="30"></canvas></div>
       </div>
-      <div class="card" style="margin-top:4px;cursor:pointer" onclick="typeof openHourlyDetail==='function'&&openHourlyDetail()">
-        <div class="card-title" style="margin-bottom:2px">48h history · sample point</div>
-        <div class="card-title" style="margin:2px 0 1px;font-size:8px">Temperature °F</div>
-        <div class="spark tall"><canvas id="c-left-temp" height="36"></canvas></div>
-        <div class="card-title" style="margin:2px 0 1px;font-size:8px">Pressure hPa</div>
-        <div class="spark tall"><canvas id="c-left-pres" height="36"></canvas></div>
-        <div class="card-title" style="margin:2px 0 1px;font-size:8px">Humidity %</div>
-        <div class="spark tall"><canvas id="c-left-rh" height="36"></canvas></div>
-        <div class="card-title" style="margin:2px 0 1px;font-size:8px">Precip in</div>
-        <div class="spark tall"><canvas id="c-left-precip" height="36"></canvas></div>
+      <div class="card" style="margin-top:3px;margin-bottom:2px;cursor:pointer;padding:4px 6px" onclick="typeof openHourlyDetail==='function'&&openHourlyDetail()">
+        <div class="card-title" style="margin-bottom:1px">48h history · sample point</div>
+        <div class="card-title" style="margin:1px 0 0;font-size:8px">Temperature °F</div>
+        <div class="spark tall"><canvas id="c-left-temp" height="30"></canvas></div>
+        <div class="card-title" style="margin:1px 0 0;font-size:8px">Pressure hPa</div>
+        <div class="spark tall"><canvas id="c-left-pres" height="30"></canvas></div>
+        <div class="card-title" style="margin:1px 0 0;font-size:8px">Humidity %</div>
+        <div class="spark tall"><canvas id="c-left-rh" height="30"></canvas></div>
+        <div class="card-title" style="margin:1px 0 0;font-size:8px">Precip in</div>
+        <div class="spark tall"><canvas id="c-left-precip" height="30"></canvas></div>
       </div>
     </div>
   </div>
@@ -375,6 +399,6 @@
 </div>
 <div class="modal-bg" id="modal-bg" onclick="if(event.target===this)closeModal()"><div class="modal" id="modal"><div class="modal-hd"><span id="modal-title">Detail</span><span class="modal-x" onclick="closeModal()"><i class="fa-solid fa-xmark"></i></span></div><div class="modal-bd" id="modal-body"></div></div></div>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
-<script src="app.js?v=20261121u"></script>
+<script src="app.js?v=20261121v"></script>
 </body>
 </html>
